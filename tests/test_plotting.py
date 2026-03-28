@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pandas as pd
+
 from table_data_extraction.config import PLOT_X_COLUMN, PLOT_Y_COLUMN, SOURCE_FILE
 from table_data_extraction.plotting import (
     prepare_plot_frame,
@@ -31,9 +33,10 @@ def test_save_plot_creates_jpg_file(tmp_path: Path):
 
 
 def test_resolve_axis_label_formats_known_columns():
-    assert resolve_axis_label("Time") == "Time (s)"
-    assert resolve_axis_label("Voltage") == "Voltage (V)"
+    assert resolve_axis_label("Time") == "Total Time (h)"
+    assert resolve_axis_label("Voltage") == "Voltage (mV)"
     assert resolve_axis_label("Current(mA)") == "Current (mA)"
+    assert resolve_axis_label("Cycle") == "Cycle"
 
 
 def test_prepare_plot_frame_uses_cumulative_time_for_time_axis():
@@ -46,14 +49,14 @@ def test_prepare_plot_frame_uses_cumulative_time_for_time_axis():
         y_col=PLOT_Y_COLUMN,
     )
 
-    assert x_label == "Cumulative Time (s)"
-    assert y_label == "Voltage (V)"
+    assert x_label == "Total Time (h)"
+    assert y_label == "Voltage (mV)"
     assert plot_frame["__plot_x__"].is_monotonic_increasing
     assert plot_frame["__plot_x__"].iloc[0] == 0
-    assert plot_frame["__plot_y__"].iloc[0] == trimmed_frame[PLOT_Y_COLUMN].iloc[0]
+    assert plot_frame["__plot_y__"].iloc[0] == trimmed_frame[PLOT_Y_COLUMN].iloc[0] * 1000
     assert trimmed_frame["Status"].iloc[0] != "Rest"
     assert len(plot_frame) == len(trimmed_frame.dropna(subset=[PLOT_X_COLUMN, PLOT_Y_COLUMN]))
-    assert plot_frame["__plot_x__"].iloc[-1] > trimmed_frame["Time"].max()
+    assert plot_frame["__plot_x__"].iloc[-1] > trimmed_frame["Time"].max() / 3600
 
 
 def test_trim_leading_rest_rows_drops_only_initial_rest_block():
@@ -63,3 +66,67 @@ def test_trim_leading_rest_rows_drops_only_initial_rest_block():
     assert len(trimmed_frame) < len(dataframe)
     assert trimmed_frame["Status"].iloc[0] != "Rest"
     assert dataframe["Status"].iloc[0] == "Rest"
+
+
+def test_prepare_plot_frame_keeps_non_time_and_non_voltage_series_unchanged():
+    dataframe = pd.DataFrame(
+        {
+            "Status": ["CC_DChg", "CC_DChg"],
+            "Cycle": [1.0, 2.0],
+            "Current(mA)": [-10.0, -20.0],
+        }
+    )
+
+    plot_frame, x_label, y_label = prepare_plot_frame(
+        dataframe,
+        x_col="Cycle",
+        y_col="Current(mA)",
+    )
+
+    assert x_label == "Cycle"
+    assert y_label == "Current (mA)"
+    assert plot_frame["__plot_x__"].tolist() == [1.0, 2.0]
+    assert plot_frame["__plot_y__"].tolist() == [-10.0, -20.0]
+
+
+def test_prepare_plot_frame_time_falls_back_to_raw_seconds_when_timestamp_missing():
+    dataframe = pd.DataFrame(
+        {
+            "Status": ["CC_DChg", "CC_DChg", "CC_DChg"],
+            "Time": [0.0, 3600.0, 7200.0],
+            "Voltage": [3.2, 3.3, 3.4],
+        }
+    )
+
+    plot_frame, x_label, y_label = prepare_plot_frame(
+        dataframe,
+        x_col="Time",
+        y_col="Voltage",
+    )
+
+    assert x_label == "Total Time (h)"
+    assert y_label == "Voltage (mV)"
+    assert plot_frame["__plot_x__"].tolist() == [0.0, 1.0, 2.0]
+    assert plot_frame["__plot_y__"].tolist() == [3200.0, 3300.0, 3400.0]
+
+
+def test_prepare_plot_frame_time_falls_back_to_raw_seconds_when_timestamp_malformed():
+    dataframe = pd.DataFrame(
+        {
+            "Status": ["CC_DChg", "CC_DChg", "CC_DChg"],
+            "Timestamp": ["2026-03-28 10:00:00", "bad-ts", "2026-03-28 12:00:00"],
+            "Time": [0.0, 3600.0, 7200.0],
+            "Voltage": [3.2, 3.3, 3.4],
+        }
+    )
+
+    plot_frame, x_label, y_label = prepare_plot_frame(
+        dataframe,
+        x_col="Time",
+        y_col="Voltage",
+    )
+
+    assert x_label == "Total Time (h)"
+    assert y_label == "Voltage (mV)"
+    assert plot_frame["__plot_x__"].tolist() == [0.0, 1.0, 2.0]
+    assert plot_frame["__plot_y__"].tolist() == [3200.0, 3300.0, 3400.0]

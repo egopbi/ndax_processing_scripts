@@ -1,7 +1,7 @@
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-SOURCE_FILE = ROOT_DIR / "example.ndax"
+SOURCE_FILE = ROOT_DIR / "example_1.ndax"
 OUTPUT_DIR = ROOT_DIR / "output"
 PLOT_OUTPUT = OUTPUT_DIR / "poc_plot.jpg"
 CSV_OUTPUT = OUTPUT_DIR / "poc_table.csv"
