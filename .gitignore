@@ -1,0 +1,7 @@
+thoughts.md
+.venv/
+.pytest_cache/
+__pycache__/
+output/
+.mplconfig/
+.cache/
