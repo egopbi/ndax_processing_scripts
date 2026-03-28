@@ -5,3 +5,4 @@ __pycache__/
 output/
 .mplconfig/
 .cache/
+.DS_Store

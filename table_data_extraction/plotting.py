@@ -39,6 +39,49 @@ def resolve_axis_label(column: str) -> str:
     return column.replace("_", " ")
 
 
+def trim_leading_rest_rows(dataframe: pd.DataFrame) -> pd.DataFrame:
+    if "Status" not in dataframe.columns:
+        return dataframe.copy()
+
+    non_rest_mask = dataframe["Status"].ne("Rest")
+    if not non_rest_mask.any():
+        return dataframe.copy()
+
+    first_non_rest_index = non_rest_mask.idxmax()
+    return dataframe.loc[first_non_rest_index:].copy()
+
+
+def prepare_plot_frame(
+    dataframe: pd.DataFrame,
+    *,
+    x_col: str,
+    y_col: str,
+) -> tuple[pd.DataFrame, str, str]:
+    _ensure_required_columns(dataframe, [x_col, y_col])
+
+    source_frame = trim_leading_rest_rows(dataframe)
+
+    x_values = source_frame[x_col]
+    x_label = resolve_axis_label(x_col)
+
+    # Neware NDAX stores Time as per-step elapsed time, so use Timestamp to
+    # build a continuous experiment timeline for plotting.
+    if x_col == "Time" and "Timestamp" in source_frame.columns:
+        timestamps = pd.to_datetime(source_frame["Timestamp"], errors="coerce")
+        if timestamps.notna().all():
+            x_values = (timestamps - timestamps.iloc[0]).dt.total_seconds()
+            x_label = "Cumulative Time (s)"
+
+    plot_frame = pd.DataFrame(
+        {
+            "__plot_x__": x_values,
+            "__plot_y__": source_frame[y_col],
+        }
+    ).dropna()
+
+    return plot_frame, x_label, resolve_axis_label(y_col)
+
+
 def save_plot(
     dataframe: pd.DataFrame,
     *,
@@ -49,15 +92,17 @@ def save_plot(
     x_limits: tuple[float, float] | None,
     y_limits: tuple[float, float] | None,
 ) -> Path:
-    _ensure_required_columns(dataframe, [x_col, y_col])
-
-    plot_frame = dataframe[[x_col, y_col]].dropna().copy()
+    plot_frame, x_label, y_label = prepare_plot_frame(
+        dataframe,
+        x_col=x_col,
+        y_col=y_col,
+    )
     if x_limits is not None:
         lower, upper = sorted(x_limits)
-        plot_frame = plot_frame.loc[plot_frame[x_col].between(lower, upper)]
+        plot_frame = plot_frame.loc[plot_frame["__plot_x__"].between(lower, upper)]
     if y_limits is not None:
         lower, upper = sorted(y_limits)
-        plot_frame = plot_frame.loc[plot_frame[y_col].between(lower, upper)]
+        plot_frame = plot_frame.loc[plot_frame["__plot_y__"].between(lower, upper)]
 
     if plot_frame.empty:
         raise ValueError("No rows are available for plotting after filtering.")
@@ -66,9 +111,14 @@ def save_plot(
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     figure, axis = plt.subplots(figsize=(10, 6))
-    axis.plot(plot_frame[x_col], plot_frame[y_col], label=series_label, linewidth=1.4)
-    axis.set_xlabel(resolve_axis_label(x_col))
-    axis.set_ylabel(resolve_axis_label(y_col))
+    axis.plot(
+        plot_frame["__plot_x__"],
+        plot_frame["__plot_y__"],
+        label=series_label,
+        linewidth=1.4,
+    )
+    axis.set_xlabel(x_label)
+    axis.set_ylabel(y_label)
     axis.legend(loc="upper right")
     axis.grid(True, alpha=0.3)
 
