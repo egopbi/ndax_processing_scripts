@@ -263,13 +263,13 @@
 ### Required Commands
 
 - `uv run pytest -q`
-- `uv run python scripts/plot_ndax.py --files example_1.ndax --y-column voltage`
-- `uv run python scripts/plot_ndax.py --files example_1.ndax example_2.ndax example_3.ndax --y-column voltage`
-- `uv run python scripts/build_comparison_table.py --files example_1.ndax example_2.ndax example_3.ndax --y-column voltage --anchor-x 50`
+- `uv run python scripts/plot_ndax.py --files examples/example_1.ndax --y-column voltage`
+- `uv run python scripts/plot_ndax.py --files examples/example_1.ndax examples/example_2.ndax examples/example_3.ndax --y-column voltage`
+- `uv run python scripts/build_comparison_table.py --files examples/example_1.ndax examples/example_2.ndax examples/example_3.ndax --y-column voltage --anchor-x 50`
 
 ### Required Manual Checks
 
-- Open the generated plot for `example_1.ndax` and confirm:
+- Open the generated plot for `examples/example_1.ndax` and confirm:
   - there is no startup downward tail at the far left edge
   - only major gridlines are visible
 - Open the generated multi-file plot and confirm:

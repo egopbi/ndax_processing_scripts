@@ -12,14 +12,22 @@ def _is_local_maximum(y_values: np.ndarray, position: int) -> bool:
     current = y_values[position]
     left = y_values[position - 1]
     right = y_values[position + 1]
-    return current >= left and current >= right and (current > left or current > right)
+    return (
+        current >= left
+        and current >= right
+        and (current > left or current > right)
+    )
 
 
 def _is_local_minimum(y_values: np.ndarray, position: int) -> bool:
     current = y_values[position]
     left = y_values[position - 1]
     right = y_values[position + 1]
-    return current <= left and current <= right and (current < left or current < right)
+    return (
+        current <= left
+        and current <= right
+        and (current < left or current < right)
+    )
 
 
 def _find_first_extremum(
@@ -67,18 +75,30 @@ def find_six_extrema_indices(
     anchor_position = _find_anchor_position(x_values, float(anchor_x))
 
     plus_u_r = _find_first_extremum(
-        y_values, start=anchor_position - 1, stop=0, step=-1, predicate=_is_local_maximum
+        y_values,
+        start=anchor_position - 1,
+        stop=0,
+        step=-1,
+        predicate=_is_local_maximum,
     )
     plus_u_m = (
         _find_first_extremum(
-            y_values, start=plus_u_r - 1, stop=0, step=-1, predicate=_is_local_minimum
+            y_values,
+            start=plus_u_r - 1,
+            stop=0,
+            step=-1,
+            predicate=_is_local_minimum,
         )
         if plus_u_r is not None
         else None
     )
     plus_u_l = (
         _find_first_extremum(
-            y_values, start=plus_u_m - 1, stop=0, step=-1, predicate=_is_local_maximum
+            y_values,
+            start=plus_u_m - 1,
+            stop=0,
+            step=-1,
+            predicate=_is_local_maximum,
         )
         if plus_u_m is not None
         else None

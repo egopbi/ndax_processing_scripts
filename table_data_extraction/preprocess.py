@@ -13,13 +13,17 @@ def trim_leading_rest_rows(dataframe: pd.DataFrame) -> pd.DataFrame:
     return dataframe.iloc[first_non_rest_position:].copy()
 
 
-def prepare_x_series(dataframe: pd.DataFrame, resolved_x_column: str) -> pd.Series:
+def prepare_x_series(
+    dataframe: pd.DataFrame, resolved_x_column: str
+) -> pd.Series:
     if resolved_x_column != "Time":
         return dataframe[resolved_x_column]
 
     trimmed = trim_leading_rest_rows(dataframe)
     if trimmed.empty:
-        return pd.Series(dtype=float, name=resolved_x_column, index=trimmed.index)
+        return pd.Series(
+            dtype=float, name=resolved_x_column, index=trimmed.index
+        )
 
     timestamps = pd.to_datetime(trimmed["Timestamp"], errors="coerce")
     cumulative_seconds = (timestamps - timestamps.iloc[0]).dt.total_seconds()

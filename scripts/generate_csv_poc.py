@@ -1,19 +1,37 @@
+import argparse
 from pathlib import Path
 import sys
+from typing import Sequence
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from table_data_extraction.config import CSV_COLUMNS, CSV_OUTPUT, SOURCE_FILE
-from table_data_extraction.export import resolve_available_columns, save_csv_slice
+from table_data_extraction.config import CSV_COLUMNS, CSV_OUTPUT
+from table_data_extraction.export import (
+    resolve_available_columns,
+    save_csv_slice,
+)
 from table_data_extraction.reader import load_ndax_dataframe
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Generate a demo CSV slice for a single NDAX file."
+    )
+    parser.add_argument("file", help="Path to the NDAX file.")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+
     try:
-        dataframe = load_ndax_dataframe(SOURCE_FILE)
-        available_columns, missing_columns = resolve_available_columns(dataframe, CSV_COLUMNS)
+        source_file = Path(args.file)
+        dataframe = load_ndax_dataframe(source_file)
+        available_columns, missing_columns = resolve_available_columns(
+            dataframe, CSV_COLUMNS
+        )
         output_path = save_csv_slice(
             dataframe,
             columns=available_columns,

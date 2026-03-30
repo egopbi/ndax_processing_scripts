@@ -1,0 +1,28 @@
+paths:
+  output_dir: output
+
+plot:
+  palette:
+    - "#1718FE"
+    - "#D35400"
+    - "#128A0C"
+    - "#7A44F6"
+    - "#C0392B"
+    - "#008AA6"
+    - "#1B1F28"
+    - "#A61E4D"
+  
+  defaults:
+    x_column: Time
+    y_column: Voltage
+    x_limits: null
+    y_limits: null
+
+csv:
+  defaults:
+    columns:
+      - Time
+      - Voltage
+      - Current(mA)
+      - Charge_Capacity(mAh)
+      - Discharge_Capacity(mAh)

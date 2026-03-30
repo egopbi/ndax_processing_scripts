@@ -1,162 +1,544 @@
-# NDAX Table Data Extraction
+# Руководство по работе с файлами NDAX
 
-This repository provides two supported CLI tools for laboratory staff:
+## Что делает этот проект
 
-- `scripts/plot_ndax.py` for plots
-- `scripts/build_comparison_table.py` for comparison tables
+Этот проект помогает работать с файлами `.ndax` тремя основными командами:
 
-`scripts/health_check_ndax.py` is a diagnostic helper for checking whether an NDAX file has the columns needed by the public tools.
+- строит график по одному или нескольким файлам;
+- строит сравнительную таблицу из 6 характерных точек;
+- проверяет, хватает ли в файле нужных столбцов.
 
-Legacy PoC scripts are not the normal user interface.
+Если вы открываете README впервые, начните с разделов ниже и используйте готовые команды без изменений.
 
-The public CLI contract uses `Time` in hours and `Voltage` in mV.
+## Подготовка к запуску
 
-## Installation
+Выберите ТОЛЬКО один из двух следующих способов
+
+### Скачивание zip-архива
+1. Откройте страницу этого репозитория на GitHub.
+2. Нажмите `Code` -> `Download ZIP`.
+3. Распакуйте архив в удобную папку, например в `Desktop`.
+4. После распаковки откройте созданную папку проекта. Её имя зависит от того, какой архив вы скачали, поэтому в командах ниже замените пример на фактическое имя папки.
+
+### Скачивание с помощью git
+- Для начала установите git на свой пк
+MacOS:
+```bash
+xcode-select --install
+```
 
 Windows:
+```bash
+winget install --id Git.Git -e --source winget
+```
+
+- Затем перейдите в нужную папку и выполните команду:
+```
+git clone https://github.com/egopbi/ndax_processing_scripts.git
+```
+
+
+
+### macOS
+
+1. Установите Python 3.13 с сайта https://www.python.org/downloads/macos/.
+2. Во время установки убедитесь, что включена опция добавления `python3` в `PATH`, если установщик её предлагает.
+3. Откройте Terminal.
+4. Перейдите в папку проекта. Например, если вы распаковали архив в `Desktop`, команда может выглядеть так:
+
+```bash
+cd ~/Desktop/<имя-папки-после-распаковки>
+```
+
+5. Выполните:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+### Windows
+
+1. Установите Python 3.13 с сайта https://www.python.org/downloads/windows/.
+2. На первом экране установщика отметьте `Add python.exe to PATH`.
+3. Откройте PowerShell.
+4. Перейдите в папку проекта.
+
+В PowerShell:
+
+```powershell
+cd $env:USERPROFILE\Desktop\<имя-папки-после-распаковки>
+```
+
+
+5. Выполните:
 
 ```bash
 py -m pip install -r requirements.txt
 ```
 
+## Основные команды
+
+### 1. Построить график
+
 macOS:
 
 ```bash
-uv sync
+python3 scripts/plot_ndax.py --files examples/example_1.ndax --y-column Voltage
 ```
-
-## Plot NDAX data
-
-Use `scripts/plot_ndax.py` to build one plot from one or more NDAX files.
 
 Windows:
 
 ```bash
-py scripts\plot_ndax.py --files example.ndax --y-column Voltage
+py scripts\plot_ndax.py --files examples\example_1.ndax --y-column Voltage
 ```
+
+### 2. Построить сравнительную таблицу
 
 macOS:
 
 ```bash
-uv run python scripts/plot_ndax.py --files example.ndax --y-column Voltage
+python3 scripts/build_comparison_table.py --files examples/example_1.ndax --y-column Voltage --anchor-x 0.5
 ```
-
-The plot is saved to `output/` by default. Use `--output` if you want a custom path. When `Time` is the x-axis, values are shown in hours and `Voltage` is shown in mV.
-
-### Example: plot with 2 `ndax`
 
 Windows:
 
 ```bash
-py scripts\plot_ndax.py --files sample_a.ndax sample_b.ndax --labels Sample_A Sample_B --y-column Voltage
+py scripts\build_comparison_table.py --files examples\example_1.ndax --y-column Voltage --anchor-x 0.5
 ```
+
+### 3. Проверить файл
 
 macOS:
 
 ```bash
-uv run python scripts/plot_ndax.py --files sample_a.ndax sample_b.ndax --labels Sample_A Sample_B --y-column Voltage
+python3 scripts/health_check_ndax.py examples/example_1.ndax
 ```
-
-### Example: plot with non-`Time` x-column
 
 Windows:
 
 ```bash
-py scripts\plot_ndax.py --files example.ndax --x-column "current(ma)" --y-column Voltage
+py scripts\health_check_ndax.py examples\example_1.ndax
 ```
+
+## Быстрые примеры
+
+### Один файл на графике
+
+```bash
+python3 scripts/plot_ndax.py --files examples/example_1.ndax --y-column Voltage
+```
+
+### Несколько файлов на одном графике
+
+```bash
+python3 scripts/plot_ndax.py --files examples/example_1.ndax examples/example_2.ndax examples/example_3.ndax --y-column Voltage
+```
+
+### Несколько файлов на графике со своими подписями
+
+```bash
+python3 scripts/plot_ndax.py --files examples/example_1.ndax examples/example_2.ndax --labels Sample_A Sample_B --y-column Voltage
+```
+
+### График с ограничением по осям
+
+```bash
+python3 scripts/plot_ndax.py --files examples/example_1.ndax --y-column Voltage --x-min 0 --x-max 2.5 --y-min 3000 --y-max 4300
+```
+
+### Таблица для одного файла
+
+```bash
+python3 scripts/build_comparison_table.py --files examples/example_1.ndax --y-column Voltage --anchor-x 0.5
+```
+
+### Таблица для нескольких файлов
+
+```bash
+python3 scripts/build_comparison_table.py --files examples/example_1.ndax examples/example_2.ndax --y-column Voltage --anchor-x 0.5
+```
+
+### Таблица с подписями и своим именем выходного файла
+
+```bash
+python3 scripts/build_comparison_table.py --files examples/example_1.ndax examples/example_2.ndax --labels Batch_1 Batch_2 --y-column Voltage --anchor-x 0.5 --output output/my_table.csv
+```
+
+### График со своим именем выходного файла
+
+```bash
+python3 scripts/plot_ndax.py --files examples/example_1.ndax examples/example_2.ndax --labels Batch_1 Batch_2 --y-column Voltage --output output/my_plot.jpg
+```
+
+## Подробно: построение графика
+
+Команда:
 
 macOS:
 
 ```bash
-uv run python scripts/plot_ndax.py --files example.ndax --x-column "current(ma)" --y-column Voltage
+python3 scripts/plot_ndax.py --files FILE1.ndax [FILE2.ndax ...] --y-column COLUMN [другие флаги]
 ```
-
-### Example: plot with axis ranges
 
 Windows:
 
 ```bash
-py scripts\plot_ndax.py --files example.ndax --y-column Voltage --x-min 0 --x-max 1.5 --y-min 3000 --y-max 4300
+py scripts\plot_ndax.py --files FILE1.ndax [FILE2.ndax ...] --y-column COLUMN [другие флаги]
 ```
+
+Что делает:
+строит один JPG-график по одному или нескольким файлам `.ndax`.
+
+Обязательные аргументы:
+
+- `--files` - один или несколько путей к `.ndax`.
+- `--y-column` - столбец для оси Y.
+
+Необязательные аргументы:
+
+- `--x-column` - столбец для оси X. По умолчанию: `Time`.
+- `--labels` - подписи линий. Количество подписей должно совпадать с количеством файлов.
+- `--x-min` - нижняя граница оси X.
+- `--x-max` - верхняя граница оси X.
+- `--y-min` - нижняя граница оси Y.
+- `--y-max` - верхняя граница оси Y.
+- `--output` - путь к итоговому файлу.
+
+Какие значения можно передавать:
+
+- `--files` принимает один или несколько путей к существующим `.ndax`.
+- `--x-column` и `--y-column` принимают имена столбцов из файла NDAX. Поиск идёт без учёта регистра, но имя должно однозначно совпасть с одним столбцом.
+- `--labels` принимает список слов или коротких подписей без запятых.
+- `--x-min`, `--x-max`, `--y-min`, `--y-max` принимают числа.
+- `--output` принимает произвольный путь к файлу; CLI не проверяет расширение.
+
+Единицы измерения:
+
+- если `--x-column Time`, значения `--x-min` и `--x-max` задаются в часах;
+- если `--y-column Voltage`, значения `--y-min` и `--y-max` задаются в мВ;
+- при `Time` на оси X график показывает время в часах;
+- при `Voltage` на оси Y график показывает напряжение в мВ.
+
+Куда сохраняется результат по умолчанию:
+
+- в папку `output`;
+- имя создаётся автоматически в виде `voltage-time-YYYY-MM-DD_HH-MM-SS.jpg` или по тем столбцам, которые вы выбрали.
+
+Если `--labels` не указан:
+
+- подписи берутся из имён файлов без расширения.
+
+## Подробно: построение таблицы
+
+Команда:
 
 macOS:
 
 ```bash
-uv run python scripts/plot_ndax.py --files example.ndax --y-column Voltage --x-min 0 --x-max 1.5 --y-min 3000 --y-max 4300
+python3 scripts/build_comparison_table.py --files FILE1.ndax [FILE2.ndax ...] --y-column COLUMN --anchor-x NUMBER [другие флаги]
 ```
-
-## Build a comparison table
-
-Use `scripts/build_comparison_table.py` to generate the comparison CSV for one anchor position on the `Time` axis.
 
 Windows:
 
 ```bash
-py scripts\build_comparison_table.py --files example.ndax --anchor-x 0.5 --y-column Voltage
+py scripts\build_comparison_table.py --files FILE1.ndax [FILE2.ndax ...] --y-column COLUMN --anchor-x NUMBER [другие флаги]
 ```
+
+Что делает:
+строит CSV-таблицу, где для каждого файла сохраняются 6 точек формы сигнала и время короткого замыкания.
+
+Обязательные аргументы:
+
+- `--files` - один или несколько путей к `.ndax`.
+- `--y-column` - столбец, из которого брать значения для таблицы.
+- `--anchor-x` - опорная точка по оси X.
+
+Необязательные аргументы:
+
+- `--x-column` - столбец для оси X. По умолчанию: `Time`.
+- `--labels` - подписи строк. Количество подписей должно совпадать с количеством файлов.
+- `--output` - путь к итоговому файлу.
+
+Какие значения можно передавать:
+
+- `--files` принимает один или несколько путей к `.ndax`;
+- `--x-column` и `--y-column` принимают имена столбцов из файла NDAX;
+- `--anchor-x` принимает число;
+- `--labels` принимает список подписей;
+- `--output` принимает произвольный путь к файлу; CLI не проверяет расширение.
+
+Единицы измерения:
+
+- если `--x-column Time`, значение `--anchor-x` задаётся в часах;
+- если `--y-column Voltage`, значения в таблице выводятся в мВ;
+- если `--y-column Time`, значения для таблицы переводятся в часы.
+
+Куда сохраняется результат по умолчанию:
+
+- в папку `output`;
+- имя создаётся автоматически в виде `table_voltage_YYYY-MM-DD_HH-MM-SS.csv`.
+
+Что будет в файле:
+
+- две служебные строки заголовка;
+- затем по одной строке на каждый входной файл;
+- столбцы: `name`, `+U_l`, `+U_m`, `+U_r`, `-U_l`, `-U_m`, `-U_r`, `Короткое замыкание`.
+
+Если `--labels` не указан:
+
+- названия строк берутся из имён файлов без расширения.
+
+## Подробно: проверка файла
+
+Команда:
 
 macOS:
 
 ```bash
-uv run python scripts/build_comparison_table.py --files example.ndax --anchor-x 0.5 --y-column Voltage
+python3 scripts/health_check_ndax.py FILE.ndax
 ```
-
-The table is saved to `output/` by default. Use `--output` if you want a custom path. The output table reports `Voltage` values in mV.
-
-### Example: table with one `anchor-x`
 
 Windows:
 
 ```bash
-py scripts\build_comparison_table.py --files sample_a.ndax sample_b.ndax --anchor-x 0.5 --labels Sample_A Sample_B --y-column Voltage
+py scripts\health_check_ndax.py FILE.ndax
 ```
+
+Что делает:
+проверяет один файл и печатает отчёт в терминал.
+
+Аргументы:
+
+- `file` - обязательный позиционный аргумент, путь к одному `.ndax`.
+
+Что проверяет:
+
+- есть ли данные в файле;
+- присутствуют ли столбцы для графика: `Time`, `Voltage`;
+- присутствуют ли столбцы из CSV-настроек: `Time`, `Voltage`, `Current(mA)`, `Charge_Capacity(mAh)`, `Discharge_Capacity(mAh)`.
+
+Результат:
+
+- отдельный файл не создаётся;
+- отчёт выводится прямо в терминал;
+- код возврата `0` означает, что обязательные столбцы найдены;
+- код возврата `1` означает, что столбцы отсутствуют или сам файл не удалось обработать.
+
+Пример:
+
+```bash
+python3 scripts/health_check_ndax.py examples/example_1.ndax
+```
+
+## Вспомогательные команды
+
+Эти команды есть в проекте, но обычно они не нужны обычному пользователю.
+
+### Демонстрационный график
 
 macOS:
 
 ```bash
-uv run python scripts/build_comparison_table.py --files sample_a.ndax sample_b.ndax --anchor-x 0.5 --labels Sample_A Sample_B --y-column Voltage
+python3 scripts/generate_plot_poc.py examples/example_1.ndax
 ```
-
-## Health check
-
-Use `scripts/health_check_ndax.py` when a file may have missing or invalid columns. The command prints a report and returns a non-zero exit code if problems are detected.
 
 Windows:
 
 ```bash
-py scripts\health_check_ndax.py
+py scripts\generate_plot_poc.py examples\example_1.ndax
 ```
+
+Что делает:
+строит демонстрационный график по настройкам из `project_config.yaml` и сохраняет его как `output/poc_plot.jpg`.
+
+### Демонстрационный CSV-срез
 
 macOS:
 
 ```bash
-uv run python scripts/health_check_ndax.py
+python3 scripts/generate_csv_poc.py examples/example_1.ndax
 ```
-
-### Example: health check when file has problems
 
 Windows:
 
 ```bash
-py scripts\health_check_ndax.py
+py scripts\generate_csv_poc.py examples\example_1.ndax
 ```
 
-macOS:
+Что делает:
+сохраняет в `output/poc_table.csv` только столбцы из `csv.defaults.columns`, если они есть в файле.
 
-```bash
-uv run python scripts/health_check_ndax.py
-```
+## Как рассчитываются 6 точек таблицы
 
-## Tests
+Ниже описана логика без кода.
 
-Windows:
+1. Сначала скрипт выбирает `anchor-x` как опорную точку по оси X.
+2. Потом он ищет в данных ближайшую реальную точку X к этому значению.
+3. Слева от этой позиции он идёт назад и ищет три экстремума в порядке: максимум, минимум, максимум.
+4. Справа от этой позиции он идёт вперёд и ищет три экстремума в порядке: минимум, максимум, минимум.
+5. В итоговой строке таблицы точки записываются как `+U_l`, `+U_m`, `+U_r`, `-U_l`, `-U_m`, `-U_r`.
 
-```bash
-py -m pytest
-```
+Важно понимать:
 
-macOS:
+- ближайший к `anchor-x` максимум слева сначала находится как внутренняя точка, а в готовой строке все три положительные точки всё равно показываются слева направо: `+U_l`, `+U_m`, `+U_r`;
+- если какая-то точка не нашлась, соответствующая ячейка остаётся пустой;
+- перед поиском убираются начальные строки со статусом `Rest`;
+- если ось X равна `Time`, для поиска используется время в секундах внутри данных, но в командной строке `--anchor-x` вы всё равно задаёте в часах.
 
-```bash
-uv run pytest
-```
+## Как определяется точка короткого замыкания
+
+Скрипт использует два независимых признака и берёт более ранний из них.
+
+Первый признак: пороговое событие.
+
+- после предварительной очистки данных ищется первый локальный максимум не ниже `200` мВ;
+- или первый локальный минимум не выше `-200` мВ;
+- если такой экстремум найден, его время считается кандидатом на короткое замыкание.
+
+Второй признак: схлопывание амплитуды сигнала.
+
+- сигнал делится на окна по 5 часов;
+- для каждого окна считается амплитуда как разница между максимумом и минимумом;
+- базовый уровень берётся как медиана трёх предыдущих окон;
+- короткое замыкание фиксируется, если через 5 часов амплитуда уже меньше 80% базы, через 10 часов меньше 50% базы, и дальше не восстанавливается выше 60% базы.
+
+Что ещё важно:
+
+- перед этим анализом убираются начальные строки `Rest`;
+- если в данных напряжения есть длинный стартовый хвост до первого экстремума, он тоже отрезается;
+- если в файле есть корректный столбец `Timestamp`, время считается по нему, иначе берётся столбец `Time`;
+- итоговое значение в таблице округляется до ближайших 5 часов по правилу half-up: например, `12.5` станет `15`, а `12.4` станет `10`.
+
+## Настройка project_config.yaml
+
+Файл `project_config.yaml` управляет общими настройками проекта. Меняйте его только если понимаете, зачем именно это нужно.
+
+### `paths.output_dir`
+
+Что меняет:
+папку, куда по умолчанию сохраняются графики, таблицы и демонстрационные файлы.
+
+Какое значение ждёт:
+строку, например `output`.
+
+Когда имеет смысл менять:
+если вы хотите складывать все результаты в другую папку.
+
+Когда лучше не менять:
+если вас устраивает папка `output` и вы не хотите перестраивать привычный путь к результатам.
+
+### `plot.palette`
+
+Что меняет:
+цвета линий на графике.
+
+Какое значение ждёт:
+список строк с цветами, например в формате `#1718FE`.
+
+Когда имеет смысл менять:
+если вам нужны другие фирменные цвета или более контрастные линии.
+
+Когда лучше не менять:
+если вы не уверены, что новых цветов хватит на нужное количество файлов. Сейчас палитра рассчитана на 8 линий; если файлов больше, график не построится.
+
+### `plot.defaults.x_column`
+
+Что меняет:
+стандартное имя X-столбца для вспомогательного скрипта `generate_plot_poc.py` и для `health_check_ndax.py`, где это значение берётся из конфигурации как обязательный столбец для графика.
+
+Какое значение ждёт:
+строку, сейчас это `Time`.
+
+Когда имеет смысл менять:
+почти никогда для обычной работы. Основная команда `plot_ndax.py` всё равно берёт X-столбец из флага `--x-column` или использует своё встроенное значение `Time`.
+
+Когда лучше не менять:
+если вы пользуетесь основными командами и не хотите ломать демонстрационные сценарии.
+
+### `plot.defaults.y_column`
+
+Что меняет:
+стандартное имя Y-столбца для `generate_plot_poc.py` и для `health_check_ndax.py`, где это значение берётся из конфигурации как обязательный столбец для графика.
+
+Какое значение ждёт:
+строку, сейчас это `Voltage`.
+
+Когда имеет смысл менять:
+только если вы осознанно перестраиваете демонстрационный сценарий под другой столбец.
+
+Когда лучше не менять:
+если вы строите обычные графики через `plot_ndax.py`, где нужный столбец удобнее задавать флагом `--y-column`.
+
+### `plot.defaults.x_limits`
+
+Что меняет:
+ограничения оси X для `generate_plot_poc.py`.
+
+Какое значение ждёт:
+`null` или список из двух значений, например `[0, 5]`. Вместо одной из границ можно поставить `null`.
+
+Когда имеет смысл менять:
+если демонстрационный график нужно всегда открывать в фиксированном диапазоне.
+
+Когда лучше не менять:
+если вы обычно задаёте диапазон прямо в основной команде через `--x-min` и `--x-max`.
+
+### `plot.defaults.y_limits`
+
+Что меняет:
+ограничения оси Y для `generate_plot_poc.py`.
+
+Какое значение ждёт:
+`null` или список из двух значений, например `[3000, 4300]`.
+
+Когда имеет смысл менять:
+если для демонстрационного графика нужен постоянный диапазон по вертикали.
+
+Когда лучше не менять:
+если вы работаете через `plot_ndax.py` и задаёте пределы флагами `--y-min` и `--y-max`.
+
+### `csv.defaults.columns`
+
+Что меняет:
+список столбцов для `generate_csv_poc.py` и список CSV-столбцов, который использует `health_check_ndax.py`.
+
+Какое значение ждёт:
+список строк. Сейчас это:
+
+- `Time`
+- `Voltage`
+- `Current(mA)`
+- `Charge_Capacity(mAh)`
+- `Discharge_Capacity(mAh)`
+
+Когда имеет смысл менять:
+если вы хотите, чтобы демонстрационный CSV и проверка файла ориентировались на другой набор столбцов.
+
+Когда лучше не менять:
+если вы не готовы одновременно менять свои ожидания от health check и демонстрационного CSV.
+
+## Частые вопросы и ошибки
+
+### Команда пишет, что столбец не найден
+
+Проверьте точное имя столбца внутри файла NDAX. Поиск не чувствителен к регистру, но имя должно совпасть однозначно.
+
+### Команда пишет, что количество `--labels` не совпадает
+
+Подписей должно быть ровно столько же, сколько файлов в `--files`.
+
+### После `--x-min` / `--x-max` или `--y-min` / `--y-max` график пустой
+
+Значит, выбранный диапазон отрезал все точки. Уберите ограничения или задайте более широкий интервал.
+
+### Почему график или таблица начинаются не с самого первого значения
+
+Перед обработкой проект убирает начальные строки со статусом `Rest`. Для графика и поиска короткого замыкания также может быть отрезан длинный стартовый хвост до первого выраженного экстремума.
+
+### Почему в таблице пустые ячейки
+
+Это означает, что для одной из шести точек нужный локальный максимум или минимум не нашёлся.
+
+### Почему health check ничего не сохраняет в папку
+
+Так и задумано. Эта команда только печатает отчёт в терминал и завершает работу с кодом `0` или `1`.

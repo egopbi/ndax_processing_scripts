@@ -1,12 +1,16 @@
 from pathlib import Path
 
-from table_data_extraction.config import CSV_COLUMNS, SOURCE_FILE
-from table_data_extraction.export import resolve_available_columns, save_csv_slice
+from table_data_extraction._test_support import sample_ndax_path
+from table_data_extraction.config import CSV_COLUMNS
+from table_data_extraction.export import (
+    resolve_available_columns,
+    save_csv_slice,
+)
 from table_data_extraction.reader import load_ndax_dataframe
 
 
 def test_save_csv_slice_creates_excel_friendly_csv(tmp_path: Path):
-    dataframe = load_ndax_dataframe(SOURCE_FILE)
+    dataframe = load_ndax_dataframe(sample_ndax_path())
     output_dir = tmp_path / "folder with spaces"
     output_path = output_dir / "export.csv"
 
@@ -25,7 +29,7 @@ def test_save_csv_slice_creates_excel_friendly_csv(tmp_path: Path):
 
 
 def test_resolve_available_columns_reports_missing_values():
-    dataframe = load_ndax_dataframe(SOURCE_FILE)
+    dataframe = load_ndax_dataframe(sample_ndax_path())
     available, missing = resolve_available_columns(
         dataframe,
         [*CSV_COLUMNS, "Missing Column"],

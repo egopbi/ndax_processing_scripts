@@ -5,7 +5,10 @@ from typing import Mapping, Sequence
 
 import pandas as pd
 
-from table_data_extraction.table_builder import COMPARISON_TABLE_COLUMNS, EXTREMA_COLUMNS
+from table_data_extraction.table_builder import (
+    COMPARISON_TABLE_COLUMNS,
+    EXTREMA_COLUMNS,
+)
 
 
 def resolve_available_columns(
@@ -14,10 +17,14 @@ def resolve_available_columns(
 ) -> tuple[list[str], list[str]]:
     requested = list(dict.fromkeys(columns))
     available = [column for column in requested if column in dataframe.columns]
-    missing = [column for column in requested if column not in dataframe.columns]
+    missing = [
+        column for column in requested if column not in dataframe.columns
+    ]
 
     if not available:
-        raise ValueError("None of the requested CSV columns are present in the DataFrame.")
+        raise ValueError(
+            "None of the requested CSV columns are present in the DataFrame."
+        )
 
     return available, missing
 
@@ -51,20 +58,39 @@ def save_comparison_table(
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    header_labels = tuple(extrema_header_labels) if extrema_header_labels is not None else EXTREMA_COLUMNS
+    header_labels = (
+        tuple(extrema_header_labels)
+        if extrema_header_labels is not None
+        else EXTREMA_COLUMNS
+    )
     if len(header_labels) != len(EXTREMA_COLUMNS):
         raise ValueError("extrema_header_labels must contain six labels.")
 
     header_rows = pd.DataFrame(
         [
-            {"name": "name", EXTREMA_COLUMNS[0]: _format_comparison_cell(anchor_x)},
-            {"name": "", **dict(zip(EXTREMA_COLUMNS, header_labels, strict=True))},
+            {
+                "name": "name",
+                EXTREMA_COLUMNS[0]: _format_comparison_cell(anchor_x),
+                "Короткое замыкание": "Короткое замыкание",
+            },
+            {
+                "name": "",
+                **dict(zip(EXTREMA_COLUMNS, header_labels, strict=True)),
+                "Короткое замыкание": "",
+            },
         ],
         columns=COMPARISON_TABLE_COLUMNS,
     ).fillna("")
 
     body_rows = pd.DataFrame(rows, columns=COMPARISON_TABLE_COLUMNS).fillna("")
-    body_rows = body_rows.apply(lambda column: column.map(_format_comparison_cell))
+    body_rows = body_rows.apply(
+        lambda column: column.map(
+            lambda value: _format_comparison_cell(
+                value,
+                preserve_integer=column.name == "Короткое замыкание",
+            )
+        )
+    )
     comparison_table = pd.concat([header_rows, body_rows], ignore_index=True)
     comparison_table.to_csv(
         output_file,
@@ -76,11 +102,15 @@ def save_comparison_table(
     return output_file
 
 
-def _format_comparison_cell(value: object) -> object:
+def _format_comparison_cell(
+    value: object, *, preserve_integer: bool = False
+) -> object:
     if value == "" or value is None:
         return ""
 
     if isinstance(value, Real) and not isinstance(value, bool):
+        if preserve_integer:
+            return str(int(value))
         return f"{float(value):.1f}"
 
     return value
@@ -92,4 +122,6 @@ def format_extrema_header_labels(public_y_label: str) -> tuple[str, ...]:
         return EXTREMA_COLUMNS
 
     unit = match.group(2).strip()
-    return tuple(f"{extrema_label}({unit})" for extrema_label in EXTREMA_COLUMNS)
+    return tuple(
+        f"{extrema_label}({unit})" for extrema_label in EXTREMA_COLUMNS
+    )

@@ -17,4 +17,6 @@ def load_ndax_dataframe(path: Path) -> pd.DataFrame:
 
 
 def list_columns(path: Path) -> list[str]:
-    return [str(column) for column in load_ndax_dataframe(path).columns.tolist()]
+    return [
+        str(column) for column in load_ndax_dataframe(path).columns.tolist()
+    ]

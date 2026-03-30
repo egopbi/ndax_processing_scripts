@@ -14,7 +14,9 @@ class HealthCheckResult:
     missing_columns: list[str]
 
 
-def run_health_check(path: Path, required_columns: Sequence[str]) -> HealthCheckResult:
+def run_health_check(
+    path: Path, required_columns: Sequence[str]
+) -> HealthCheckResult:
     dataframe = load_ndax_dataframe(path)
     if dataframe.empty:
         raise ValueError(f"NDAX file contains no rows: {path}")
@@ -38,8 +40,12 @@ def format_health_check_report(
     plot_columns: Sequence[str],
     csv_columns: Sequence[str],
 ) -> str:
-    plot_missing = [column for column in plot_columns if column not in result.columns]
-    csv_missing = [column for column in csv_columns if column not in result.columns]
+    plot_missing = [
+        column for column in plot_columns if column not in result.columns
+    ]
+    csv_missing = [
+        column for column in csv_columns if column not in result.columns
+    ]
 
     lines = [
         f"NDAX health check: {result.path}",

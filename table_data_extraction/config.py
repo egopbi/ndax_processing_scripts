@@ -1,30 +1,44 @@
-from pathlib import Path
+from .project_config import ROOT_DIR as PROJECT_ROOT_DIR
+from .project_config import load_project_config
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
-SOURCE_FILE = ROOT_DIR / "example_1.ndax"
-OUTPUT_DIR = ROOT_DIR / "output"
+
+class _ReadOnlyList(list):
+    def _blocked_mutation(self, *args: object, **kwargs: object) -> None:
+        raise TypeError("This configuration list is read-only.")
+
+    __delitem__ = _blocked_mutation
+    __iadd__ = _blocked_mutation
+    __imul__ = _blocked_mutation
+    __setitem__ = _blocked_mutation
+    append = _blocked_mutation
+    clear = _blocked_mutation
+    extend = _blocked_mutation
+    insert = _blocked_mutation
+    pop = _blocked_mutation
+    remove = _blocked_mutation
+    reverse = _blocked_mutation
+    sort = _blocked_mutation
+
+
+def _freeze_limits(limits):
+    if limits is None:
+        return None
+    return tuple(limits)
+
+
+_CONFIG = load_project_config()
+_PATHS = _CONFIG["paths"]
+_PLOT_DEFAULTS = _CONFIG["plot"]["defaults"]
+_CSV_DEFAULTS = _CONFIG["csv"]["defaults"]
+
+ROOT_DIR = PROJECT_ROOT_DIR
+OUTPUT_DIR = ROOT_DIR / _PATHS["output_dir"]
 PLOT_OUTPUT = OUTPUT_DIR / "poc_plot.jpg"
 CSV_OUTPUT = OUTPUT_DIR / "poc_table.csv"
 
-PLOT_X_COLUMN = "Time"
-PLOT_Y_COLUMN = "Voltage"
-CSV_COLUMNS = [
-    "Time",
-    "Voltage",
-    "Current(mA)",
-    "Charge_Capacity(mAh)",
-    "Discharge_Capacity(mAh)",
-]
+PLOT_X_COLUMN = _PLOT_DEFAULTS["x_column"]
+PLOT_Y_COLUMN = _PLOT_DEFAULTS["y_column"]
+CSV_COLUMNS = _ReadOnlyList(_CSV_DEFAULTS["columns"])
 
-X_LIMITS = None
-Y_LIMITS = None
-
-AXIS_LABEL_OVERRIDES = {
-    "Time": "Time (s)",
-    "Voltage": "Voltage (V)",
-    "Current(mA)": "Current (mA)",
-    "Charge_Capacity(mAh)": "Charge Capacity (mAh)",
-    "Discharge_Capacity(mAh)": "Discharge Capacity (mAh)",
-    "Charge_Energy(mWh)": "Charge Energy (mWh)",
-    "Discharge_Energy(mWh)": "Discharge Energy (mWh)",
-}
+X_LIMITS = _freeze_limits(_PLOT_DEFAULTS["x_limits"])
+Y_LIMITS = _freeze_limits(_PLOT_DEFAULTS["y_limits"])

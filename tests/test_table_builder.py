@@ -3,7 +3,14 @@ from pathlib import Path
 import pandas as pd
 
 from table_data_extraction.export import save_comparison_table
-from table_data_extraction.table_builder import build_comparison_row
+from table_data_extraction.table_builder import (
+    COMPARISON_TABLE_COLUMNS,
+    build_comparison_row,
+)
+
+
+def test_comparison_table_columns_include_short_circuit_last() -> None:
+    assert COMPARISON_TABLE_COLUMNS[-1] == "Короткое замыкание"
 
 
 def test_build_comparison_row_maps_extrema_indices_to_y_values() -> None:
@@ -15,6 +22,7 @@ def test_build_comparison_row_maps_extrema_indices_to_y_values() -> None:
         x_series=x_series,
         y_series=y_series,
         anchor_x=2.5,
+        short_circuit_hours=185,
         extrema_indices={
             "+U_l": 0,
             "+U_m": 1,
@@ -33,6 +41,7 @@ def test_build_comparison_row_maps_extrema_indices_to_y_values() -> None:
         "-U_l": 40.0,
         "-U_m": 50.0,
         "-U_r": 60.0,
+        "Короткое замыкание": 185,
     }
 
 
@@ -45,6 +54,7 @@ def test_build_comparison_row_uses_empty_cell_for_missing_extrema() -> None:
         x_series=x_series,
         y_series=y_series,
         anchor_x=1.0,
+        short_circuit_hours=None,
         extrema_indices={
             "+U_l": None,
             "+U_m": 1,
@@ -63,10 +73,13 @@ def test_build_comparison_row_uses_empty_cell_for_missing_extrema() -> None:
         "-U_l": 33.0,
         "-U_m": "",
         "-U_r": "",
+        "Короткое замыкание": "",
     }
 
 
-def test_save_comparison_table_writes_two_header_rows_and_no_index(tmp_path: Path) -> None:
+def test_save_comparison_table_writes_two_header_rows_and_no_index(
+    tmp_path: Path,
+) -> None:
     output_path = tmp_path / "comparison.csv"
     rows = [
         {
@@ -77,6 +90,7 @@ def test_save_comparison_table_writes_two_header_rows_and_no_index(tmp_path: Pat
             "-U_l": 40.47,
             "-U_m": 50.58,
             "-U_r": 60.69,
+            "Короткое замыкание": 185,
         },
         {
             "name": "sample_b",
@@ -86,24 +100,29 @@ def test_save_comparison_table_writes_two_header_rows_and_no_index(tmp_path: Pat
             "-U_l": -10.05,
             "-U_m": "",
             "-U_r": -20.06,
+            "Короткое замыкание": "",
         },
     ]
 
-    written_path = save_comparison_table(rows=rows, anchor_x=25, output_path=output_path)
+    written_path = save_comparison_table(
+        rows=rows, anchor_x=25, output_path=output_path
+    )
 
     file_bytes = written_path.read_bytes()
     lines = written_path.read_text(encoding="utf-8-sig").splitlines()
 
     assert written_path.exists()
     assert file_bytes.startswith(b"\xef\xbb\xbf")
-    assert lines[0] == "name;25.0;;;;;"
-    assert lines[1] == ";+U_l;+U_m;+U_r;-U_l;-U_m;-U_r"
-    assert lines[2] == "sample_a;10.1;20.2;30.4;40.5;50.6;60.7"
-    assert lines[3] == "sample_b;;12.0;;-10.1;;-20.1"
+    assert lines[0] == "name;25.0;;;;;;Короткое замыкание"
+    assert lines[1] == ";+U_l;+U_m;+U_r;-U_l;-U_m;-U_r;"
+    assert lines[2] == "sample_a;10.1;20.2;30.4;40.5;50.6;60.7;185"
+    assert lines[3] == "sample_b;;12.0;;-10.1;;-20.1;"
     assert not lines[2].startswith("0;")
 
 
-def test_save_comparison_table_writes_unit_bearing_extrema_headers(tmp_path: Path) -> None:
+def test_save_comparison_table_writes_unit_bearing_extrema_headers(
+    tmp_path: Path,
+) -> None:
     output_path = tmp_path / "comparison.csv"
     rows = [
         {
@@ -114,6 +133,7 @@ def test_save_comparison_table_writes_unit_bearing_extrema_headers(tmp_path: Pat
             "-U_l": 40.47,
             "-U_m": 50.58,
             "-U_r": 60.69,
+            "Короткое замыкание": 185,
         }
     ]
 
@@ -133,12 +153,16 @@ def test_save_comparison_table_writes_unit_bearing_extrema_headers(tmp_path: Pat
 
     lines = written_path.read_text(encoding="utf-8-sig").splitlines()
 
-    assert lines[0] == "name;25.0;;;;;"
-    assert lines[1] == ";+U_l(mV);+U_m(mV);+U_r(mV);-U_l(mV);-U_m(mV);-U_r(mV)"
-    assert lines[2] == "sample_a;10.1;20.2;30.4;40.5;50.6;60.7"
+    assert lines[0] == "name;25.0;;;;;;Короткое замыкание"
+    assert (
+        lines[1] == ";+U_l(mV);+U_m(mV);+U_r(mV);-U_l(mV);-U_m(mV);-U_r(mV);"
+    )
+    assert lines[2] == "sample_a;10.1;20.2;30.4;40.5;50.6;60.7;185"
 
 
-def test_save_comparison_table_keeps_missing_extrema_cells_empty(tmp_path: Path) -> None:
+def test_save_comparison_table_keeps_missing_extrema_cells_empty(
+    tmp_path: Path,
+) -> None:
     output_path = tmp_path / "comparison.csv"
     rows = [
         {
@@ -149,11 +173,12 @@ def test_save_comparison_table_keeps_missing_extrema_cells_empty(tmp_path: Path)
             "-U_l": -1.26,
             "-U_m": "",
             "-U_r": "",
+            "Короткое замыкание": "",
         }
     ]
 
     save_comparison_table(rows=rows, anchor_x=10, output_path=output_path)
     lines = output_path.read_text(encoding="utf-8-sig").splitlines()
 
-    assert lines[0] == "name;10.0;;;;;"
-    assert lines[2] == "sample_a;1.2;;;-1.3;;"
+    assert lines[0] == "name;10.0;;;;;;Короткое замыкание"
+    assert lines[2] == "sample_a;1.2;;;-1.3;;;"

@@ -19,11 +19,26 @@ from table_data_extraction.reader import load_ndax_dataframe
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Build a combined plot for one or more NDAX files.")
-    parser.add_argument("--files", nargs="+", required=True, help="One or more .ndax file paths.")
-    parser.add_argument("--y-column", required=True, help="Y axis column name.")
-    parser.add_argument("--x-column", default="Time", help="X axis column name. Default: Time.")
-    parser.add_argument("--labels", nargs="+", help="Optional labels. Count must match --files.")
+    parser = argparse.ArgumentParser(
+        description="Build a combined plot for one or more NDAX files."
+    )
+    parser.add_argument(
+        "--files",
+        nargs="+",
+        required=True,
+        help="One or more .ndax file paths.",
+    )
+    parser.add_argument(
+        "--y-column", required=True, help="Y axis column name."
+    )
+    parser.add_argument(
+        "--x-column", default="Time", help="X axis column name. Default: Time."
+    )
+    parser.add_argument(
+        "--labels",
+        nargs="+",
+        help="Optional labels. Count must match --files.",
+    )
     parser.add_argument(
         "--x-min",
         type=float,
@@ -54,7 +69,9 @@ def _build_limits(minimum: float | None, maximum: float | None) -> AxisLimits:
     return (minimum, maximum)
 
 
-def _resolve_labels(files: Sequence[str], labels: Sequence[str] | None) -> list[str]:
+def _resolve_labels(
+    files: Sequence[str], labels: Sequence[str] | None
+) -> list[str]:
     if labels is None:
         return [Path(file_path).stem for file_path in files]
 
@@ -77,10 +94,12 @@ def run(argv: Sequence[str] | None = None) -> Path:
 
     for file_path, label in zip(args.files, labels, strict=True):
         dataframe = load_ndax_dataframe(Path(file_path))
-        current_resolved_x_column, current_resolved_y_column = resolve_plot_columns(
-            dataframe,
-            x_column=args.x_column,
-            y_column=args.y_column,
+        current_resolved_x_column, current_resolved_y_column = (
+            resolve_plot_columns(
+                dataframe,
+                x_column=args.x_column,
+                y_column=args.y_column,
+            )
         )
         plot_frame, current_x_label, current_y_label = prepare_plot_frame(
             dataframe,
@@ -100,7 +119,9 @@ def run(argv: Sequence[str] | None = None) -> Path:
             current_resolved_x_column != resolved_x_column
             or current_resolved_y_column != resolved_y_column
         ):
-            raise ValueError("Resolved axis columns differ across input files.")
+            raise ValueError(
+                "Resolved axis columns differ across input files."
+            )
 
     assert resolved_x_column is not None
     assert resolved_y_column is not None

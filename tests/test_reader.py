@@ -1,9 +1,9 @@
-from table_data_extraction.config import SOURCE_FILE
 from table_data_extraction.reader import list_columns, load_ndax_dataframe
+from table_data_extraction._test_support import sample_ndax_path
 
 
 def test_load_ndax_dataframe_returns_non_empty_dataframe():
-    dataframe = load_ndax_dataframe(SOURCE_FILE)
+    dataframe = load_ndax_dataframe(sample_ndax_path())
 
     assert not dataframe.empty
     assert len(dataframe.index) > 0
@@ -12,7 +12,7 @@ def test_load_ndax_dataframe_returns_non_empty_dataframe():
 
 
 def test_list_columns_returns_expected_column_names():
-    columns = list_columns(SOURCE_FILE)
+    columns = list_columns(sample_ndax_path())
 
     assert columns
     assert "Current(mA)" in columns

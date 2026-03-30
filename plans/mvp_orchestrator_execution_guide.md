@@ -129,7 +129,7 @@
   - `-U_r`
 - Значение в ячейке = значение `y-column` в найденной точке.
 - Если точка не найдена, в ячейке пусто.
-- CSV writer должен формировать multi-row header в стиле `example_table.csv`:
+- CSV writer должен формировать multi-row header в стиле `examples/example_table.csv`:
   - строка 1: `name;<anchor-x>;;;;;`
   - строка 2: `;+U_l;+U_m;+U_r;-U_l;-U_m;-U_r`
 - CSV сохранять как `sep=';'`, `encoding='utf-8-sig'`.

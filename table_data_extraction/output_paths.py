@@ -10,9 +10,14 @@ def sanitize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9._-]", "_", normalized)
 
 
-def _timestamp_suffix(timestamp: datetime | None) -> str:
+def _quantity_slug(resolved_y_column: str) -> str:
+    base_name = re.sub(r"\s*[\(\[].*?[\)\]]\s*$", "", resolved_y_column).strip()
+    return sanitize_name(base_name or resolved_y_column)
+
+
+def _table_timestamp_suffix(timestamp: datetime | None) -> str:
     point_in_time = timestamp or datetime.now()
-    return point_in_time.strftime("%Y%m%d_%H%M%S")
+    return point_in_time.strftime("%Y-%m-%d_%H-%M-%S")
 
 
 def _plot_timestamp_suffix(timestamp: datetime | None) -> str:
@@ -38,8 +43,5 @@ def default_table_output_path(
     timestamp: datetime | None = None,
 ) -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    filename = (
-        f"table_{sanitize_name(resolved_y_column)}_at_"
-        f"{sanitize_name(str(anchor_x))}_{_timestamp_suffix(timestamp)}.csv"
-    )
+    filename = f"table_{_quantity_slug(resolved_y_column)}_{_table_timestamp_suffix(timestamp)}.csv"
     return OUTPUT_DIR / filename

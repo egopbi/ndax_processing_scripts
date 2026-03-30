@@ -1,5 +1,7 @@
+import argparse
 from pathlib import Path
 import sys
+from typing import Sequence
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -9,7 +11,6 @@ from table_data_extraction.config import (
     PLOT_OUTPUT,
     PLOT_X_COLUMN,
     PLOT_Y_COLUMN,
-    SOURCE_FILE,
     X_LIMITS,
     Y_LIMITS,
 )
@@ -17,15 +18,26 @@ from table_data_extraction.plotting import save_plot
 from table_data_extraction.reader import load_ndax_dataframe
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Generate a demo plot for a single NDAX file."
+    )
+    parser.add_argument("file", help="Path to the NDAX file.")
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+
     try:
-        dataframe = load_ndax_dataframe(SOURCE_FILE)
+        source_file = Path(args.file)
+        dataframe = load_ndax_dataframe(source_file)
         output_path = save_plot(
             dataframe,
             x_col=PLOT_X_COLUMN,
             y_col=PLOT_Y_COLUMN,
             output_path=PLOT_OUTPUT,
-            series_label=SOURCE_FILE.stem,
+            series_label=source_file.stem,
             x_limits=X_LIMITS,
             y_limits=Y_LIMITS,
         )
