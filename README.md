@@ -12,25 +12,33 @@
 
 ## Подготовка к запуску
 
+### 1. Клонирование проекта
 Выберите ТОЛЬКО один из двух следующих способов
 
-### Скачивание zip-архива
+#### Скачивание zip-архива
 1. Откройте страницу этого репозитория на GitHub.
 2. Нажмите `Code` -> `Download ZIP`.
 3. Распакуйте архив в удобную папку, например в `Desktop`.
 4. После распаковки откройте созданную папку проекта. Её имя зависит от того, какой архив вы скачали, поэтому в командах ниже замените пример на фактическое имя папки.
 
-### Скачивание с помощью git
+#### Скачивание с помощью git
 - Для начала установите git на свой пк
 MacOS:
-```bash
-xcode-select --install
-```
+    Установка пакетного менеджера (Если он еще не установлен)
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+    Установка git
+    ```bash
+    brew install git
+    ```
 
 Windows:
-```bash
-winget install --id Git.Git -e --source winget
-```
+    ```bash
+    winget install --id Git.Git -e --source winget
+    ```
+    Если winget не установлен в Powershell, то скачайте git с официального сайта: `https://git-scm.com/install/windows`
+
 
 - Затем перейдите в нужную папку и выполните команду:
 ```
@@ -39,8 +47,10 @@ git clone https://github.com/egopbi/ndax_processing_scripts.git
 
 
 
-### macOS
+### 2.Установка зависимостей 
+Действия зависят от ОС на ПК
 
+#### Для MacOS
 1. Установите Python 3.13 с сайта https://www.python.org/downloads/macos/.
 2. Во время установки убедитесь, что включена опция добавления `python3` в `PATH`, если установщик её предлагает.
 3. Откройте Terminal.
@@ -56,7 +66,7 @@ cd ~/Desktop/<имя-папки-после-распаковки>
 python3 -m pip install -r requirements.txt
 ```
 
-### Windows
+#### Для Windows
 
 1. Установите Python 3.13 с сайта https://www.python.org/downloads/windows/.
 2. На первом экране установщика отметьте `Add python.exe to PATH`.
