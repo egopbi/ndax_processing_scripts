@@ -81,13 +81,13 @@ cmd /c setup_windows.cmd
 ### 1. Построить график
 
 ```powershell
-.\plot_ndax.cmd --files examples\example_1.ndax --y-column Voltage
+.\plot_ndax.cmd --files examples\example1_1.ndax --y-column Voltage
 ```
 
 ### 2. Построить сравнительную таблицу
 
 ```powershell
-.\build_comparison_table.cmd --files examples\example_1.ndax --y-column Voltage --anchor-x 0.5
+.\build_comparison_table.cmd --files examples\example1_1.ndax --y-column Voltage --anchor-x 0.5
 ```
 
 ## Быстрые примеры на Windows
@@ -95,49 +95,49 @@ cmd /c setup_windows.cmd
 ### Один файл на графике
 
 ```powershell
-.\plot_ndax.cmd --files examples\example_1.ndax --y-column Voltage
+.\plot_ndax.cmd --files examples\example1_1.ndax --y-column Voltage
 ```
 
 ### Несколько файлов на одном графике
 
 ```powershell
-.\plot_ndax.cmd --files examples\example_1.ndax examples\example_2.ndax examples\example_3.ndax --y-column Voltage
+.\plot_ndax.cmd --files examples\example1_1.ndax examples\example2_2.ndax examples\example3_3.ndax --y-column Voltage
 ```
 
 ### Несколько файлов на одном графике со своими подписями
 
 ```powershell
-.\plot_ndax.cmd --files examples\example_1.ndax examples\example_2.ndax --labels Sample_A Sample_B --y-column Voltage
+.\plot_ndax.cmd --files examples\example1_1.ndax examples\example2_2.ndax --labels Sample_A Sample_B --y-column Voltage
 ```
 
 ### График с ограничением по осям
 
 ```powershell
-.\plot_ndax.cmd --files examples\example_1.ndax --y-column Voltage --x-min 0 --x-max 2.5 --y-min 3000 --y-max 4300
+.\plot_ndax.cmd --files examples\example1_1.ndax --y-column Voltage --x-min 0 --x-max 2.5 --y-min 3000 --y-max 4300
 ```
 
 ### Таблица для одного файла
 
 ```powershell
-.\build_comparison_table.cmd --files examples\example_1.ndax --y-column Voltage --anchor-x 0.5
+.\build_comparison_table.cmd --files examples\example1_1.ndax --y-column Voltage --anchor-x 0.5
 ```
 
 ### Таблица для нескольких файлов
 
 ```powershell
-.\build_comparison_table.cmd --files examples\example_1.ndax examples\example_2.ndax --y-column Voltage --anchor-x 0.5 1.0
+.\build_comparison_table.cmd --files examples\example1_1.ndax examples\example2_2.ndax --y-column Voltage --anchor-x 0.5 1.0
 ```
 
 ### Таблица с подписями и своим именем выходного файла
 
 ```powershell
-.\build_comparison_table.cmd --files examples\example_1.ndax examples\example_2.ndax --labels Batch_1 Batch_2 --y-column Voltage --anchor-x 0.5 --output output\my_table.csv
+.\build_comparison_table.cmd --files examples\example1_1.ndax examples\example2_2.ndax --labels Batch_1 Batch_2 --y-column Voltage --anchor-x 0.5 --output output\my_table.csv
 ```
 
 ### График со своим именем выходного файла
 
 ```powershell
-.\plot_ndax.cmd --files examples\example_1.ndax examples\example_2.ndax --labels Batch_1 Batch_2 --y-column Voltage --output output\my_plot.jpg
+.\plot_ndax.cmd --files examples\example1_1.ndax examples\example2_2.ndax --labels Batch_1 Batch_2 --y-column Voltage --output output\my_plot.jpg
 ```
 
 ## Подробно: построение графика
@@ -256,13 +256,13 @@ cmd /c setup_windows.cmd
 Эта команда нужна в основном для диагностики, а не для обычной работы.
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\health_check_ndax.py examples\example_1.ndax
+.\.venv\Scripts\python.exe scripts\health_check_ndax.py examples\example1_1.ndax
 ```
 
 ### Демонстрационный график
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\generate_plot_poc.py examples\example_1.ndax
+.\.venv\Scripts\python.exe scripts\generate_plot_poc.py examples\example1_1.ndax
 ```
 
 Что делает:
@@ -271,7 +271,7 @@ cmd /c setup_windows.cmd
 ### Демонстрационный CSV-срез
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\generate_csv_poc.py examples\example_1.ndax
+.\.venv\Scripts\python.exe scripts\generate_csv_poc.py examples\example1_1.ndax
 ```
 
 Что делает:

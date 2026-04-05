@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Sequence
 
 from .config import OUTPUT_DIR
 
@@ -25,22 +26,43 @@ def _plot_timestamp_suffix(timestamp: datetime | None) -> str:
     return point_in_time.strftime("%Y-%m-%d_%H-%M-%S")
 
 
+def _instance_suffix(source_paths: Sequence[str | Path]) -> str:
+    parts = [
+        sanitize_name(Path(source_path).stem.split("_")[0])
+        for source_path in source_paths
+    ]
+    return "_".join(part for part in parts if part)
+
+
 def default_plot_output_path(
     *,
+    source_paths: Sequence[str | Path],
     resolved_x_column: str,
     resolved_y_column: str,
     timestamp: datetime | None = None,
 ) -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    filename = f"{sanitize_name(resolved_y_column)}-{sanitize_name(resolved_x_column)}-{_plot_timestamp_suffix(timestamp)}.jpg"
+    instance_suffix = _instance_suffix(source_paths)
+    filename = (
+        f"{sanitize_name(resolved_y_column)}-"
+        f"{sanitize_name(resolved_x_column)}-"
+        f"{_plot_timestamp_suffix(timestamp)}"
+        f"{f'_{instance_suffix}' if instance_suffix else ''}.jpg"
+    )
     return OUTPUT_DIR / filename
 
 
 def default_table_output_path(
     *,
+    source_paths: Sequence[str | Path],
     resolved_y_column: str,
     timestamp: datetime | None = None,
 ) -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    filename = f"table_{_quantity_slug(resolved_y_column)}_{_table_timestamp_suffix(timestamp)}.csv"
+    instance_suffix = _instance_suffix(source_paths)
+    filename = (
+        f"table_{_quantity_slug(resolved_y_column)}_"
+        f"{_table_timestamp_suffix(timestamp)}"
+        f"{f'_{instance_suffix}' if instance_suffix else ''}.csv"
+    )
     return OUTPUT_DIR / filename

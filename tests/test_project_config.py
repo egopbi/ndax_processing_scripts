@@ -420,7 +420,7 @@ def test_load_project_config_raises_for_malformed_yaml(
     config_path = tmp_path / "project_config.yaml"
     config_path.write_text(
         """
-paths: [examples/example_1.ndax, output
+paths: [examples/example1_1.ndax, output
 """.strip()
         + "\n",
         encoding="utf-8",

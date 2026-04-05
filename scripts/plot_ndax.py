@@ -85,6 +85,7 @@ def run(argv: Sequence[str] | None = None) -> Path:
     args = _build_parser().parse_args(argv)
 
     labels = _resolve_labels(args.files, args.labels)
+    input_paths = [Path(file_path) for file_path in args.files]
 
     lines: list[PlotSeries] = []
     x_label: str | None = None
@@ -92,8 +93,8 @@ def run(argv: Sequence[str] | None = None) -> Path:
     resolved_x_column: str | None = None
     resolved_y_column: str | None = None
 
-    for file_path, label in zip(args.files, labels, strict=True):
-        dataframe = load_ndax_dataframe(Path(file_path))
+    for file_path, label in zip(input_paths, labels, strict=True):
+        dataframe = load_ndax_dataframe(file_path)
         current_resolved_x_column, current_resolved_y_column = (
             resolve_plot_columns(
                 dataframe,
@@ -130,6 +131,7 @@ def run(argv: Sequence[str] | None = None) -> Path:
 
     if args.output is None:
         output_path = default_plot_output_path(
+            source_paths=input_paths,
             resolved_x_column=resolved_x_column,
             resolved_y_column=resolved_y_column,
         )

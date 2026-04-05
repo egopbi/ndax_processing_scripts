@@ -34,9 +34,9 @@ if errorlevel 1 (
 echo.
 echo Установка завершена.
 echo Для построения графика используйте:
-echo .\plot_ndax.cmd --files examples\example_1.ndax --y-column Voltage
+echo .\plot_ndax.cmd --files examples\example1_1.ndax --y-column Voltage
 echo.
 echo Для построения сравнительной таблицы используйте:
-echo .\build_comparison_table.cmd --files examples\example_1.ndax --y-column Voltage --anchor-x 0.5
+echo .\build_comparison_table.cmd --files examples\example1_1.ndax --y-column Voltage --anchor-x 0.5
 
 exit /b 0

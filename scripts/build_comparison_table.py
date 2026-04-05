@@ -130,12 +130,13 @@ def run(argv: Sequence[str] | None = None) -> Path:
     args = _build_parser().parse_args(argv)
     labels = _resolve_labels(args.files, args.labels)
     anchors = _normalize_anchor_x_values(args.anchor_x)
+    input_paths = [Path(file_path) for file_path in args.files]
 
     rows: list[dict[str, object]] = []
     resolved_y_column_for_output: str | None = None
 
-    for file_path, label in zip(args.files, labels, strict=True):
-        dataframe = load_ndax_dataframe(Path(file_path))
+    for file_path, label in zip(input_paths, labels, strict=True):
+        dataframe = load_ndax_dataframe(file_path)
         resolved_x_column = resolve_column_name(dataframe, args.x_column)
         resolved_y_column = resolve_column_name(dataframe, args.y_column)
         trimmed = trim_leading_rest_rows(dataframe)
@@ -192,6 +193,7 @@ def run(argv: Sequence[str] | None = None) -> Path:
     )
     output_path = (
         default_table_output_path(
+            source_paths=input_paths,
             resolved_y_column=resolved_y_column_for_output,
         )
         if args.output is None

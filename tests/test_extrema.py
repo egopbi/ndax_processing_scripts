@@ -219,7 +219,7 @@ def test_find_six_extrema_indices_respects_min_extrema_separation(
 def test_find_six_extrema_indices_matches_example_4_with_approximate_anchor() -> (
     None
 ):
-    path = Path(__file__).resolve().parents[1] / "examples" / "example_4.ndax"
+    path = Path(__file__).resolve().parents[1] / "examples" / "example4_4.ndax"
     dataframe = load_ndax_dataframe(path)
     trimmed = trim_leading_rest_rows(dataframe)
     x_series = prepare_x_series(trimmed, resolve_column_name(trimmed, "Time"))

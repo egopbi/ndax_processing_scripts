@@ -142,9 +142,16 @@ def test_cli_defaults_labels_and_output_path(
         return _sample_dataframe()
 
     def fake_default_plot_output_path(
-        *, resolved_x_column: str, resolved_y_column: str
+        *,
+        resolved_x_column: str,
+        resolved_y_column: str,
+        source_paths,
     ) -> Path:
-        captured["default_path_args"] = (resolved_x_column, resolved_y_column)
+        captured["default_path_args"] = (
+            resolved_x_column,
+            resolved_y_column,
+            list(source_paths),
+        )
         return tmp_path / "auto_plot.jpg"
 
     def fake_save_multi_series_plot(
@@ -187,7 +194,11 @@ def test_cli_defaults_labels_and_output_path(
     ])
 
     assert exit_code == 0
-    assert captured["default_path_args"] == ("Time", "Voltage")
+    assert captured["default_path_args"] == (
+        "Time",
+        "Voltage",
+        [first_file, second_file],
+    )
     assert captured["x_label"] == "Total Time (h)"
     assert captured["y_label"] == "Voltage (mV)"
     assert captured["x_limits"] is None

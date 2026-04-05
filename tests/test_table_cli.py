@@ -118,8 +118,13 @@ def test_cli_defaults_labels_uses_default_output_and_warns_for_missing_extrema(
     def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
         return _sample_dataframe()
 
-    def fake_default_table_output_path(*, resolved_y_column: str) -> Path:
-        captured["default_path_args"] = resolved_y_column
+    def fake_default_table_output_path(
+        *, resolved_y_column: str, source_paths
+    ) -> Path:
+        captured["default_path_args"] = (
+            resolved_y_column,
+            list(source_paths),
+        )
         return tmp_path / "auto_table.csv"
 
     def fake_find_six_extrema_indices(x_series, y_series, anchor_x: float):
@@ -193,7 +198,10 @@ def test_cli_defaults_labels_uses_default_output_and_warns_for_missing_extrema(
     ])
 
     assert exit_code == 0
-    assert captured["default_path_args"] == "Voltage"
+    assert captured["default_path_args"] == (
+        "Voltage",
+        [first_file, second_file],
+    )
     assert captured["first_x_series"] == [0.0, 4.0, 9.0]
     assert captured["first_y_series"] == [3200.0, 3400.0, 3300.0]
     assert captured["first_anchor_x"] == 4.0 * 3600
@@ -319,8 +327,13 @@ def test_cli_uses_public_y_label_units_for_time_extrema_headers(
     def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
         return _sample_dataframe_with_time_values_that_differ_from_timestamp_deltas()
 
-    def fake_default_table_output_path(*, resolved_y_column: str) -> Path:
-        captured["default_path_args"] = resolved_y_column
+    def fake_default_table_output_path(
+        *, resolved_y_column: str, source_paths
+    ) -> Path:
+        captured["default_path_args"] = (
+            resolved_y_column,
+            list(source_paths),
+        )
         return tmp_path / "time_table.csv"
 
     def fake_find_six_extrema_indices(x_series, y_series, anchor_x: float):
@@ -370,7 +383,10 @@ def test_cli_uses_public_y_label_units_for_time_extrema_headers(
     ])
 
     assert exit_code == 0
-    assert captured["default_path_args"] == "Time"
+    assert captured["default_path_args"] == (
+        "Time",
+        [tmp_path / "sample_a.ndax"],
+    )
     assert captured["y_series"] == pytest.approx([
         0.0,
         4.0 / 3600.0,
