@@ -26,3 +26,10 @@ csv:
       - Current(mA)
       - Charge_Capacity(mAh)
       - Discharge_Capacity(mAh)
+
+comparison_table:
+  extrema_detection:
+    window_points: 9
+    zero_threshold: 5.0
+    min_zone_points: 5
+    min_extrema_separation_points: 5

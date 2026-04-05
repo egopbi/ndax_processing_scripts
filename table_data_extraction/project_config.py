@@ -72,6 +72,28 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _validate_positive_int(value: Any, path: ConfigPath) -> None:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise ValueError(
+            f"Config key '{_format_path(path)}' must be a positive integer."
+        )
+
+
+def _validate_odd_window_points(value: Any, path: ConfigPath) -> None:
+    _validate_positive_int(value, path)
+    if value < 3 or value % 2 == 0:
+        raise ValueError(
+            f"Config key '{_format_path(path)}' must be an odd integer >= 3."
+        )
+
+
+def _validate_non_negative_number(value: Any, path: ConfigPath) -> None:
+    if not _is_number(value) or value < 0:
+        raise ValueError(
+            f"Config key '{_format_path(path)}' must be a non-negative number."
+        )
+
+
 def _validate_axis_limits(value: Any, path: ConfigPath) -> None:
     if value is None:
         return
@@ -122,6 +144,14 @@ _CONFIG_SCHEMA: SchemaNode = {
     "csv": {
         "defaults": {
             "columns": _validate_string_list,
+        },
+    },
+    "comparison_table": {
+        "extrema_detection": {
+            "window_points": _validate_odd_window_points,
+            "zero_threshold": _validate_non_negative_number,
+            "min_zone_points": _validate_positive_int,
+            "min_extrema_separation_points": _validate_positive_int,
         },
     },
 }

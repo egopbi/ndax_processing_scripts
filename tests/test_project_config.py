@@ -51,6 +51,14 @@ def _valid_config() -> dict[str, object]:
                 ],
             },
         },
+        "comparison_table": {
+            "extrema_detection": {
+                "window_points": 9,
+                "zero_threshold": 5.0,
+                "min_zone_points": 5,
+                "min_extrema_separation_points": 5,
+            },
+        },
     }
 
 
@@ -71,6 +79,12 @@ def test_load_project_config_reads_palette_and_defaults_without_labels() -> (
         "Charge_Capacity(mAh)",
         "Discharge_Capacity(mAh)",
     ]
+    assert config["comparison_table"]["extrema_detection"] == {
+        "window_points": 9,
+        "zero_threshold": 5.0,
+        "min_zone_points": 5,
+        "min_extrema_separation_points": 5,
+    }
     assert "labels" not in config
 
 
@@ -138,6 +152,38 @@ def test_load_project_config_returns_isolated_copy_per_call() -> None:
             lambda config: config["csv"]["defaults"].pop("columns"),
             r"csv\.defaults\.columns",
         ),
+        (
+            lambda config: config.pop("comparison_table"),
+            r"comparison_table",
+        ),
+        (
+            lambda config: config["comparison_table"].pop("extrema_detection"),
+            r"comparison_table\.extrema_detection",
+        ),
+        (
+            lambda config: config["comparison_table"]["extrema_detection"].pop(
+                "window_points"
+            ),
+            r"comparison_table\.extrema_detection\.window_points",
+        ),
+        (
+            lambda config: config["comparison_table"]["extrema_detection"].pop(
+                "zero_threshold"
+            ),
+            r"comparison_table\.extrema_detection\.zero_threshold",
+        ),
+        (
+            lambda config: config["comparison_table"]["extrema_detection"].pop(
+                "min_zone_points"
+            ),
+            r"comparison_table\.extrema_detection\.min_zone_points",
+        ),
+        (
+            lambda config: config["comparison_table"]["extrema_detection"].pop(
+                "min_extrema_separation_points"
+            ),
+            r"comparison_table\.extrema_detection\.min_extrema_separation_points",
+        ),
     ],
 )
 def test_load_project_config_fails_fast_for_missing_nested_required_keys(
@@ -200,6 +246,16 @@ def test_load_project_config_fails_fast_for_missing_nested_required_keys(
             ),
             r"paths\.output_dir",
         ),
+        (
+            lambda config: config.__setitem__("comparison_table", []),
+            r"comparison_table",
+        ),
+        (
+            lambda config: config["comparison_table"].__setitem__(
+                "extrema_detection", []
+            ),
+            r"comparison_table\.extrema_detection",
+        ),
     ],
 )
 def test_load_project_config_rejects_wrong_shape_for_required_plot_label_and_path_keys(
@@ -235,6 +291,42 @@ def test_load_project_config_rejects_wrong_shape_for_required_plot_label_and_pat
                 "columns", ["Time", 42]
             ),
             r"csv\.defaults\.columns",
+        ),
+        (
+            lambda config: config["comparison_table"][
+                "extrema_detection"
+            ].__setitem__("window_points", 2),
+            r"comparison_table\.extrema_detection\.window_points",
+        ),
+        (
+            lambda config: config["comparison_table"][
+                "extrema_detection"
+            ].__setitem__("window_points", 4),
+            r"comparison_table\.extrema_detection\.window_points",
+        ),
+        (
+            lambda config: config["comparison_table"][
+                "extrema_detection"
+            ].__setitem__("window_points", "9"),
+            r"comparison_table\.extrema_detection\.window_points",
+        ),
+        (
+            lambda config: config["comparison_table"][
+                "extrema_detection"
+            ].__setitem__("zero_threshold", -1.0),
+            r"comparison_table\.extrema_detection\.zero_threshold",
+        ),
+        (
+            lambda config: config["comparison_table"][
+                "extrema_detection"
+            ].__setitem__("min_zone_points", 0),
+            r"comparison_table\.extrema_detection\.min_zone_points",
+        ),
+        (
+            lambda config: config["comparison_table"][
+                "extrema_detection"
+            ].__setitem__("min_extrema_separation_points", False),
+            r"comparison_table\.extrema_detection\.min_extrema_separation_points",
         ),
     ],
 )
@@ -296,6 +388,7 @@ def test_load_project_config_accepts_config_without_labels_section(
             "paths": _valid_config()["paths"],
             "plot": _valid_config()["plot"],
             "csv": _valid_config()["csv"],
+            "comparison_table": _valid_config()["comparison_table"],
         },
     )
     monkeypatch.setattr(project_config_module, "CONFIG_PATH", config_path)
@@ -379,6 +472,10 @@ def test_config_module_exports_values_from_yaml_loader(
         assert config_module.CSV_COLUMNS == ["Cycle", "Current(mA)"]
         assert config_module.X_LIMITS == (0.0, 10.0)
         assert config_module.Y_LIMITS == (-5.0, 5.0)
+        assert config_module.EXTREMA_WINDOW_POINTS == 9
+        assert config_module.EXTREMA_ZERO_THRESHOLD == 5.0
+        assert config_module.MIN_ZONE_POINTS == 5
+        assert config_module.MIN_EXTREMA_SEPARATION_POINTS == 5
         assert not hasattr(config_module, "AXIS_LABEL_OVERRIDES")
 
     importlib.reload(config_module)
