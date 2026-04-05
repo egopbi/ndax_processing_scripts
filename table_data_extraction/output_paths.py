@@ -39,7 +39,6 @@ def default_plot_output_path(
 def default_table_output_path(
     *,
     resolved_y_column: str,
-    anchor_x: str | float | int,
     timestamp: datetime | None = None,
 ) -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

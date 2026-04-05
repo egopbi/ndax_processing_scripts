@@ -47,9 +47,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--anchor-x",
+        nargs="+",
         type=float,
         required=True,
-        help="Single anchor X value. If --x-column Time, value is in hours.",
+        help=(
+            "One or more anchor X values. "
+            "If --x-column Time, values are in hours."
+        ),
     )
     parser.add_argument(
         "--x-column", default="Time", help="X axis column name. Default: Time."
@@ -75,10 +79,23 @@ def _resolve_labels(
     return [str(label) for label in labels]
 
 
+def _normalize_anchor_x_values(anchor_x_values: Sequence[float]) -> list[float]:
+    normalized: list[float] = []
+    seen: set[float] = set()
+    for anchor_x in anchor_x_values:
+        normalized_anchor_x = float(anchor_x)
+        if normalized_anchor_x in seen:
+            continue
+        seen.add(normalized_anchor_x)
+        normalized.append(normalized_anchor_x)
+    return normalized
+
+
 def _warn_for_missing_extrema(
     *,
     file_path: str,
     label: str,
+    anchor_x: float,
     extrema_indices: ExtremaIndices,
 ) -> None:
     missing_labels = [
@@ -91,7 +108,10 @@ def _warn_for_missing_extrema(
 
     missing = ", ".join(missing_labels)
     print(
-        f"Warning: missing extrema for '{label}' ({file_path}): {missing}",
+        (
+            f"Warning: missing extrema for '{label}' ({file_path}) "
+            f"at anchor-x {anchor_x}: {missing}"
+        ),
         file=sys.stderr,
     )
 
@@ -109,6 +129,7 @@ def _timestamps_are_usable(dataframe) -> bool:
 def run(argv: Sequence[str] | None = None) -> Path:
     args = _build_parser().parse_args(argv)
     labels = _resolve_labels(args.files, args.labels)
+    anchors = _normalize_anchor_x_values(args.anchor_x)
 
     rows: list[dict[str, object]] = []
     resolved_y_column_for_output: str | None = None
@@ -134,28 +155,31 @@ def run(argv: Sequence[str] | None = None) -> Path:
         elif resolved_y_column == "Voltage":
             y_series = y_series * 1000
 
-        anchor_x_for_search = args.anchor_x
-        if resolved_x_column == "Time":
-            anchor_x_for_search = args.anchor_x * 3600
+        extrema_indices_by_anchor: list[ExtremaIndices] = []
+        for anchor_x in anchors:
+            anchor_x_for_search = anchor_x
+            if resolved_x_column == "Time":
+                anchor_x_for_search = anchor_x * 3600
 
-        extrema_indices = find_six_extrema_indices(
-            x_series=x_series,
-            y_series=y_series,
-            anchor_x=anchor_x_for_search,
-        )
-        _warn_for_missing_extrema(
-            file_path=file_path,
-            label=label,
-            extrema_indices=extrema_indices,
-        )
+            extrema_indices = find_six_extrema_indices(
+                x_series=x_series,
+                y_series=y_series,
+                anchor_x=anchor_x_for_search,
+            )
+            _warn_for_missing_extrema(
+                file_path=file_path,
+                label=label,
+                anchor_x=anchor_x,
+                extrema_indices=extrema_indices,
+            )
+            extrema_indices_by_anchor.append(extrema_indices)
 
         row = build_comparison_row(
             label=label,
-            x_series=x_series,
             y_series=y_series,
-            anchor_x=args.anchor_x,
+            anchors=anchors,
             short_circuit_hours=short_circuit_rounded,
-            extrema_indices=extrema_indices,
+            extrema_indices_by_anchor=extrema_indices_by_anchor,
         )
         rows.append(row)
 
@@ -169,7 +193,6 @@ def run(argv: Sequence[str] | None = None) -> Path:
     output_path = (
         default_table_output_path(
             resolved_y_column=resolved_y_column_for_output,
-            anchor_x=args.anchor_x,
         )
         if args.output is None
         else Path(args.output)
@@ -177,7 +200,7 @@ def run(argv: Sequence[str] | None = None) -> Path:
 
     return save_comparison_table(
         rows=rows,
-        anchor_x=args.anchor_x,
+        anchors=anchors,
         output_path=output_path,
         extrema_header_labels=extrema_header_labels,
     )

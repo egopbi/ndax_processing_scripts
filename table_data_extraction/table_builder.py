@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Mapping, Sequence
 
 import pandas as pd
 
@@ -12,32 +12,43 @@ EXTREMA_COLUMNS: tuple[str, ...] = (
     "-U_m",
     "-U_r",
 )
-COMPARISON_TABLE_COLUMNS: tuple[str, ...] = (
-    "name",
-    *EXTREMA_COLUMNS,
-    "Короткое замыкание",
-)
+
+
+def anchor_extrema_key(anchor_index: int, extrema_label: str) -> str:
+    return f"anchor_{anchor_index}__{extrema_label}"
+
+
+def comparison_table_columns_for_anchors(
+    anchors: Sequence[float],
+) -> tuple[str, ...]:
+    block_columns = tuple(
+        anchor_extrema_key(anchor_index, extrema_label)
+        for anchor_index, _anchor in enumerate(anchors)
+        for extrema_label in EXTREMA_COLUMNS
+    )
+    return ("name", *block_columns, "Короткое замыкание")
 
 
 def build_comparison_row(
     *,
     label: str,
-    x_series: pd.Series,
     y_series: pd.Series,
-    anchor_x: float,
+    anchors: Sequence[float],
     short_circuit_hours: int | None,
-    extrema_indices: Mapping[str, int | None],
+    extrema_indices_by_anchor: Sequence[Mapping[str, int | None]],
 ) -> dict[str, object]:
-    if len(x_series) != len(y_series):
-        raise ValueError("x_series and y_series must have the same length.")
+    if len(anchors) != len(extrema_indices_by_anchor):
+        raise ValueError("anchors and extrema_indices_by_anchor must align.")
 
-    _ = anchor_x
     row: dict[str, object] = {"name": label}
-    for extrema_label in EXTREMA_COLUMNS:
-        extrema_position = extrema_indices.get(extrema_label)
-        row[extrema_label] = (
-            "" if extrema_position is None else y_series.iloc[extrema_position]
-        )
+    for anchor_index, extrema_indices in enumerate(extrema_indices_by_anchor):
+        for extrema_label in EXTREMA_COLUMNS:
+            extrema_position = extrema_indices.get(extrema_label)
+            row[anchor_extrema_key(anchor_index, extrema_label)] = (
+                ""
+                if extrema_position is None
+                else y_series.iloc[extrema_position]
+            )
     row["Короткое замыкание"] = (
         "" if short_circuit_hours is None else short_circuit_hours
     )

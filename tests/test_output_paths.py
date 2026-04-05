@@ -39,7 +39,6 @@ def test_default_table_output_path_uses_output_dir_and_filename_template() -> (
 
     output_path = default_table_output_path(
         resolved_y_column="Voltage",
-        anchor_x=" 10.5 s ",
         timestamp=timestamp,
     )
 
@@ -52,7 +51,6 @@ def test_default_table_output_path_strips_units_from_quantity_name() -> None:
 
     output_path = default_table_output_path(
         resolved_y_column="Current(mA)",
-        anchor_x="0.5",
         timestamp=timestamp,
     )
 
@@ -66,7 +64,6 @@ def test_default_table_output_path_normalizes_snake_case_quantity_name() -> (
 
     output_path = default_table_output_path(
         resolved_y_column="Charge_Capacity(mAh)",
-        anchor_x="0.5",
         timestamp=timestamp,
     )
 

@@ -6,8 +6,9 @@ from typing import Mapping, Sequence
 import pandas as pd
 
 from table_data_extraction.table_builder import (
-    COMPARISON_TABLE_COLUMNS,
     EXTREMA_COLUMNS,
+    anchor_extrema_key,
+    comparison_table_columns_for_anchors,
 )
 
 
@@ -51,7 +52,7 @@ def save_csv_slice(
 def save_comparison_table(
     *,
     rows: Sequence[Mapping[str, object]],
-    anchor_x: float | str,
+    anchors: Sequence[float | str],
     output_path: Path,
     extrema_header_labels: Sequence[str] | None = None,
 ) -> Path:
@@ -66,23 +67,35 @@ def save_comparison_table(
     if len(header_labels) != len(EXTREMA_COLUMNS):
         raise ValueError("extrema_header_labels must contain six labels.")
 
+    columns = comparison_table_columns_for_anchors(anchors)
+    first_header_row: dict[str, object] = {
+        "name": "name",
+        "Короткое замыкание": "Короткое замыкание",
+    }
+    for anchor_index, anchor in enumerate(anchors):
+        for offset, extrema_label in enumerate(EXTREMA_COLUMNS):
+            first_header_row[
+                anchor_extrema_key(anchor_index, extrema_label)
+            ] = _format_comparison_cell(anchor) if offset == 0 else ""
+
+    second_header_row: dict[str, object] = {
+        "name": "",
+        "Короткое замыкание": "",
+    }
+    for anchor_index, _anchor in enumerate(anchors):
+        for extrema_label, header_label in zip(
+            EXTREMA_COLUMNS, header_labels, strict=True
+        ):
+            second_header_row[
+                anchor_extrema_key(anchor_index, extrema_label)
+            ] = header_label
+
     header_rows = pd.DataFrame(
-        [
-            {
-                "name": "name",
-                EXTREMA_COLUMNS[0]: _format_comparison_cell(anchor_x),
-                "Короткое замыкание": "Короткое замыкание",
-            },
-            {
-                "name": "",
-                **dict(zip(EXTREMA_COLUMNS, header_labels, strict=True)),
-                "Короткое замыкание": "",
-            },
-        ],
-        columns=COMPARISON_TABLE_COLUMNS,
+        [first_header_row, second_header_row],
+        columns=columns,
     ).fillna("")
 
-    body_rows = pd.DataFrame(rows, columns=COMPARISON_TABLE_COLUMNS).fillna("")
+    body_rows = pd.DataFrame(rows, columns=columns).fillna("")
     body_rows = body_rows.apply(
         lambda column: column.map(
             lambda value: _format_comparison_cell(
