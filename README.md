@@ -13,10 +13,37 @@
 
 ## Подготовка проекта на Windows
 
-1. Скачайте репозиторий архивом или через `git clone`.
+1. Получите проект.
+
+Если у вас уже установлен `git`, выполните:
+
+```powershell
+git clone https://github.com/egopbi/ndax_processing_scripts.git
+cd ndax_processing_scripts
+```
+
+Если `git` не установлен, скачайте репозиторий ZIP-архивом, распакуйте его и перейдите в папку проекта:
+
+```powershell
+cd C:\путь\к\ndax_processing_scripts
+```
+
 2. Установите Python >= 3.12 с официальной страницы для Windows и включите опцию `Add python.exe to PATH`.
-3. Откройте PowerShell в корне проекта.
-4. Выполните:
+3. Проверьте, что Python доступен из терминала:
+
+```powershell
+py --version
+```
+
+Ожидается версия `3.12` или выше. Если команда `py` не найдена, закройте и заново откройте PowerShell. Если это не помогло, переустановите Python и убедитесь, что включена опция `Add python.exe to PATH`.
+
+4. Если вы открыли PowerShell не сразу в корне проекта, перейдите в папку репозитория:
+
+```powershell
+cd C:\путь\к\ndax_processing_scripts
+```
+
+5. Выполните:
 
 ```powershell
 .\setup_windows.cmd
