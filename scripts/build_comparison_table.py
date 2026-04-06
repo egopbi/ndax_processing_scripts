@@ -3,8 +3,6 @@ from pathlib import Path
 import sys
 from typing import Sequence
 
-import pandas as pd
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
@@ -18,7 +16,10 @@ from table_data_extraction.extrema import (
     ExtremaIndices,
     find_six_extrema_indices,
 )
-from table_data_extraction.output_paths import default_table_output_path
+from table_data_extraction.output_paths import (
+    default_table_output_path,
+    sample_name_from_path,
+)
 from table_data_extraction.preprocess import (
     prepare_x_series,
     trim_leading_rest_rows,
@@ -29,6 +30,7 @@ from table_data_extraction.short_circuit import (
     round_short_circuit_hours,
 )
 from table_data_extraction.table_builder import build_comparison_row
+from table_data_extraction.time_utils import timestamps_are_usable
 from table_data_extraction.plotting import resolve_axis_label
 
 
@@ -71,7 +73,7 @@ def _resolve_labels(
     files: Sequence[str], labels: Sequence[str] | None
 ) -> list[str]:
     if labels is None:
-        return [Path(file_path).stem for file_path in files]
+        return [sample_name_from_path(file_path) for file_path in files]
 
     if len(labels) != len(files):
         raise ValueError("Number of labels must match number of files.")
@@ -116,16 +118,6 @@ def _warn_for_missing_extrema(
     )
 
 
-def _timestamps_are_usable(dataframe) -> bool:
-    if "Timestamp" not in dataframe.columns:
-        return False
-
-    parsed_timestamps = pd.to_datetime(
-        dataframe["Timestamp"], errors="coerce", format="mixed"
-    )
-    return parsed_timestamps.notna().all()
-
-
 def run(argv: Sequence[str] | None = None) -> Path:
     args = _build_parser().parse_args(argv)
     labels = _resolve_labels(args.files, args.labels)
@@ -143,13 +135,13 @@ def run(argv: Sequence[str] | None = None) -> Path:
         short_circuit_raw = detect_short_circuit_time_hours(dataframe)
         short_circuit_rounded = round_short_circuit_hours(short_circuit_raw)
 
-        if resolved_x_column == "Time" and not _timestamps_are_usable(trimmed):
+        if resolved_x_column == "Time" and not timestamps_are_usable(trimmed):
             x_series = trimmed[resolved_x_column]
         else:
             x_series = prepare_x_series(trimmed, resolved_x_column)
         y_series = trimmed[resolved_y_column]
         if resolved_y_column == "Time":
-            if _timestamps_are_usable(trimmed):
+            if timestamps_are_usable(trimmed):
                 y_series = prepare_x_series(trimmed, resolved_y_column) / 3600
             else:
                 y_series = y_series / 3600

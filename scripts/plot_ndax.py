@@ -7,7 +7,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from table_data_extraction.output_paths import default_plot_output_path
+from table_data_extraction.output_paths import (
+    default_plot_output_path,
+    sample_name_from_path,
+)
 from table_data_extraction.plotting import (
     AxisLimits,
     PlotSeries,
@@ -73,7 +76,7 @@ def _resolve_labels(
     files: Sequence[str], labels: Sequence[str] | None
 ) -> list[str]:
     if labels is None:
-        return [Path(file_path).stem for file_path in files]
+        return [sample_name_from_path(file_path) for file_path in files]
 
     if len(labels) != len(files):
         raise ValueError("Number of labels must match number of files.")

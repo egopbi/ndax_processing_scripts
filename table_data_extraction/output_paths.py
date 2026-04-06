@@ -26,11 +26,12 @@ def _plot_timestamp_suffix(timestamp: datetime | None) -> str:
     return point_in_time.strftime("%Y-%m-%d_%H-%M-%S")
 
 
+def sample_name_from_path(source_path: str | Path) -> str:
+    return sanitize_name(Path(source_path).stem.split("_")[0])
+
+
 def _instance_suffix(source_paths: Sequence[str | Path]) -> str:
-    parts = [
-        sanitize_name(Path(source_path).stem.split("_")[0])
-        for source_path in source_paths
-    ]
+    parts = [sample_name_from_path(source_path) for source_path in source_paths]
     return "_".join(part for part in parts if part)
 
 

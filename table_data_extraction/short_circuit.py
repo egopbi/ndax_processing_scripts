@@ -8,18 +8,12 @@ import pandas as pd
 
 from .extrema import _is_local_maximum, _is_local_minimum
 from .preprocess import trim_leading_rest_rows
+from .time_utils import (
+    cumulative_time_from_timestamp_series,
+    timestamps_are_usable,
+)
 
 STARTUP_TAIL_MIN_POINTS = 5
-
-
-def _timestamps_are_usable(dataframe: pd.DataFrame) -> bool:
-    if "Timestamp" not in dataframe.columns:
-        return False
-
-    parsed_timestamps = pd.to_datetime(
-        dataframe["Timestamp"], errors="coerce", format="mixed"
-    )
-    return parsed_timestamps.notna().all()
 
 
 def _find_first_extremum_position(values: pd.Series) -> int | None:
@@ -56,11 +50,10 @@ def _prepare_detection_frame(dataframe: pd.DataFrame) -> pd.DataFrame:
     if trimmed.empty:
         return pd.DataFrame(columns=["hours", "voltage_mv"], dtype=float)
 
-    if _timestamps_are_usable(trimmed):
-        timestamps = pd.to_datetime(
-            trimmed["Timestamp"], errors="coerce", format="mixed"
+    if timestamps_are_usable(trimmed):
+        hours = cumulative_time_from_timestamp_series(
+            trimmed["Timestamp"], divisor=3600
         )
-        hours = (timestamps - timestamps.iloc[0]).dt.total_seconds() / 3600
     else:
         hours = trimmed["Time"] / 3600
 

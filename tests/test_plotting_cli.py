@@ -207,7 +207,7 @@ def test_cli_defaults_labels_and_output_path(
 
     series = captured["series"]
     assert series is not None
-    assert [line.label for line in series] == ["sample_a", "sample_b"]
+    assert [line.label for line in series] == ["sample", "sample"]
     assert all(len(line.frame) == 1 for line in series)
     assert all(
         line.frame["__plot_x__"].tolist() == [4.0 / 3600] for line in series

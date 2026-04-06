@@ -36,8 +36,6 @@ def _valid_config() -> dict[str, object]:
             "defaults": {
                 "x_column": "Time",
                 "y_column": "Voltage",
-                "x_limits": None,
-                "y_limits": None,
             },
         },
         "csv": {
@@ -141,14 +139,6 @@ def test_load_project_config_returns_isolated_copy_per_call() -> None:
             r"plot\.defaults\.y_column",
         ),
         (
-            lambda config: config["plot"]["defaults"].pop("x_limits"),
-            r"plot\.defaults\.x_limits",
-        ),
-        (
-            lambda config: config["plot"]["defaults"].pop("y_limits"),
-            r"plot\.defaults\.y_limits",
-        ),
-        (
             lambda config: config["csv"]["defaults"].pop("columns"),
             r"csv\.defaults\.columns",
         ),
@@ -227,18 +217,6 @@ def test_load_project_config_fails_fast_for_missing_nested_required_keys(
                 "y_column", {"name": "Voltage"}
             ),
             r"plot\.defaults\.y_column",
-        ),
-        (
-            lambda config: config["plot"]["defaults"].__setitem__(
-                "x_limits", 10
-            ),
-            r"plot\.defaults\.x_limits",
-        ),
-        (
-            lambda config: config["plot"]["defaults"].__setitem__(
-                "y_limits", [0, 1, 2]
-            ),
-            r"plot\.defaults\.y_limits",
         ),
         (
             lambda config: config["paths"].__setitem__(
@@ -349,32 +327,6 @@ def test_load_project_config_rejects_non_string_container_members(
         project_config_module.load_project_config()
 
 
-@pytest.mark.parametrize(
-    ("key", "value"),
-    [
-        ("x_limits", [0.0, "invalid"]),
-        ("y_limits", [None, {"value": 1}]),
-    ],
-)
-def test_load_project_config_rejects_invalid_axis_limit_members(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    key: str,
-    value: object,
-) -> None:
-    from table_data_extraction import project_config as project_config_module
-
-    config = _valid_config()
-    config["plot"]["defaults"][key] = value
-    config_path = tmp_path / "project_config.yaml"
-    _write_config(config_path, config)
-
-    monkeypatch.setattr(project_config_module, "CONFIG_PATH", config_path)
-
-    with pytest.raises(ValueError, match=rf"plot\.defaults\.{key}"):
-        project_config_module.load_project_config()
-
-
 def test_load_project_config_accepts_config_without_labels_section(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -444,8 +396,6 @@ def test_config_module_exports_values_from_yaml_loader(
     config["paths"]["output_dir"] = "artifacts"
     config["plot"]["defaults"]["x_column"] = "Cycle"
     config["plot"]["defaults"]["y_column"] = "Current(mA)"
-    config["plot"]["defaults"]["x_limits"] = [0.0, 10.0]
-    config["plot"]["defaults"]["y_limits"] = [-5.0, 5.0]
     config["csv"]["defaults"]["columns"] = ["Cycle", "Current(mA)"]
 
     with monkeypatch.context() as context:
@@ -458,20 +408,12 @@ def test_config_module_exports_values_from_yaml_loader(
 
         assert config_module.ROOT_DIR == tmp_path
         assert config_module.OUTPUT_DIR == tmp_path / "artifacts"
-        assert (
-            config_module.PLOT_OUTPUT
-            == tmp_path / "artifacts" / "poc_plot.jpg"
-        )
-        assert (
-            config_module.CSV_OUTPUT
-            == tmp_path / "artifacts" / "poc_table.csv"
-        )
+        assert not hasattr(config_module, "PLOT_OUTPUT")
+        assert not hasattr(config_module, "CSV_OUTPUT")
         assert config_module.PLOT_X_COLUMN == "Cycle"
         assert config_module.PLOT_Y_COLUMN == "Current(mA)"
         assert isinstance(config_module.CSV_COLUMNS, list)
         assert config_module.CSV_COLUMNS == ["Cycle", "Current(mA)"]
-        assert config_module.X_LIMITS == (0.0, 10.0)
-        assert config_module.Y_LIMITS == (-5.0, 5.0)
         assert config_module.EXTREMA_WINDOW_POINTS == 9
         assert config_module.EXTREMA_ZERO_THRESHOLD == 5.0
         assert config_module.MIN_ZONE_POINTS == 5
@@ -498,8 +440,6 @@ def test_config_module_exports_read_only_snapshots(
 
     config = _valid_config()
     config["paths"]["output_dir"] = "artifacts"
-    config["plot"]["defaults"]["x_limits"] = [0.0, 10.0]
-    config["plot"]["defaults"]["y_limits"] = [-5.0, 5.0]
     config["csv"]["defaults"]["columns"] = ["Cycle", "Current(mA)"]
 
     with monkeypatch.context() as context:
@@ -512,18 +452,10 @@ def test_config_module_exports_read_only_snapshots(
 
         with pytest.raises(TypeError):
             config_module.CSV_COLUMNS.append("Injected")
-        with pytest.raises(TypeError):
-            config_module.X_LIMITS[0] = -1.0
-        with pytest.raises(TypeError):
-            config_module.Y_LIMITS[0] = 1.0
 
         config["csv"]["defaults"]["columns"].append("Injected")
-        config["plot"]["defaults"]["x_limits"][0] = -1.0
-        config["plot"]["defaults"]["y_limits"][1] = 1.0
 
         assert config_module.CSV_COLUMNS == ["Cycle", "Current(mA)"]
-        assert config_module.X_LIMITS == (0.0, 10.0)
-        assert config_module.Y_LIMITS == (-5.0, 5.0)
 
     importlib.reload(config_module)
 

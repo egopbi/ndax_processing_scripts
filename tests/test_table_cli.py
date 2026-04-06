@@ -77,6 +77,21 @@ def _sample_dataframe_with_time_values_that_differ_from_timestamp_deltas() -> (
     })
 
 
+def _sample_dataframe_with_mixed_timestamp_formats() -> pd.DataFrame:
+    return pd.DataFrame({
+        "Status": ["Rest", "CC_DChg", "CC_DChg", "CC_DChg"],
+        "Timestamp": [
+            "2026-03-28 10:00:00",
+            "2026-03-28 10:00:05",
+            "2026/03/28 10:00:09",
+            "2026-03-28T10:00:14",
+        ],
+        "Time": [1000.0, 1100.0, 1200.0, 1300.0],
+        "Voltage": [2.9, 3.2, 3.4, 3.3],
+        "Current(mA)": [0.0, -100.0, -120.0, -110.0],
+    })
+
+
 def _empty_extrema_indices() -> dict[str, int | None]:
     return {
         "+U_l": None,
@@ -220,7 +235,7 @@ def test_cli_defaults_labels_uses_default_output_and_warns_for_missing_extrema(
 
     rows = captured["rows"]
     assert rows is not None
-    assert [row["name"] for row in rows] == ["sample_a", "sample_b"]
+    assert [row["name"] for row in rows] == ["sample", "sample"]
     assert all(row["anchor_0__+U_l"] == "" for row in rows)
     assert all(row["anchor_0__+U_m"] == 3400.0 for row in rows)
     assert all(row["anchor_0__+U_r"] == "" for row in rows)
@@ -619,6 +634,60 @@ def test_cli_time_falls_back_to_raw_seconds_when_timestamp_malformed(
 
     def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
         return _sample_dataframe_with_malformed_timestamp()
+
+    def fake_find_six_extrema_indices(x_series, y_series, anchor_x: float):
+        captured["x_series"] = x_series.tolist()
+        captured["y_series"] = y_series.tolist()
+        captured["anchor_x"] = anchor_x
+        return _empty_extrema_indices()
+
+    def fake_save_comparison_table(
+        *, rows, anchors, output_path: Path, extrema_header_labels=None
+    ) -> Path:
+        captured["rows"] = list(rows)
+        captured["saved_anchors"] = list(anchors)
+        captured["output_path"] = output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("ok\n", encoding="utf-8")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(
+        module, "find_six_extrema_indices", fake_find_six_extrema_indices
+    )
+    monkeypatch.setattr(
+        module, "save_comparison_table", fake_save_comparison_table
+    )
+
+    explicit_output = tmp_path / "custom" / "table.csv"
+    exit_code = module.main([
+        "--files",
+        str(tmp_path / "sample.ndax"),
+        "--y-column",
+        "voltage",
+        "--anchor-x",
+        "4",
+        "--output",
+        str(explicit_output),
+    ])
+
+    assert exit_code == 0
+    assert captured["x_series"] == [0.0, 4.0, 9.0]
+    assert captured["y_series"] == [3200.0, 3400.0, 3300.0]
+    assert captured["anchor_x"] == 4.0 * 3600
+    assert captured["saved_anchors"] == [4.0]
+
+
+def test_cli_time_uses_mixed_valid_timestamp_formats_for_cumulative_seconds(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_table_cli_module()
+    captured: dict[str, object] = {}
+
+    def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
+        return _sample_dataframe_with_mixed_timestamp_formats()
 
     def fake_find_six_extrema_indices(x_series, y_series, anchor_x: float):
         captured["x_series"] = x_series.tolist()

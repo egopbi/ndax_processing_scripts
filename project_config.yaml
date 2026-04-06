@@ -15,8 +15,6 @@ plot:
   defaults:
     x_column: Time
     y_column: Voltage
-    x_limits: null
-    y_limits: null
 
 csv:
   defaults:

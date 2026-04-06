@@ -1,5 +1,7 @@
 import pandas as pd
 
+from .time_utils import cumulative_time_from_timestamp_series
+
 
 def trim_leading_rest_rows(dataframe: pd.DataFrame) -> pd.DataFrame:
     if "Status" not in dataframe.columns:
@@ -25,7 +27,6 @@ def prepare_x_series(
             dtype=float, name=resolved_x_column, index=trimmed.index
         )
 
-    timestamps = pd.to_datetime(trimmed["Timestamp"], errors="coerce")
-    cumulative_seconds = (timestamps - timestamps.iloc[0]).dt.total_seconds()
-    cumulative_seconds.name = resolved_x_column
-    return cumulative_seconds
+    return cumulative_time_from_timestamp_series(
+        trimmed["Timestamp"], name=resolved_x_column
+    )

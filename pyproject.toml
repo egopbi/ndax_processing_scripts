@@ -1,7 +1,7 @@
 [project]
 name = "table-data-extraction-script"
 version = "0.1.0"
-description = "Add your description here"
+description = "NDAX plotting and comparison-table utilities."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -1,1 +1,1 @@
-"""Shared utilities for the NDAX PoC scripts."""
+"""Shared utilities for NDAX plotting and comparison-table workflows."""

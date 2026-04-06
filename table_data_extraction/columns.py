@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Iterable, Sequence
+from typing import Iterable
 
 import pandas as pd
 
@@ -41,13 +41,3 @@ def resolve_column_name(
         )
 
     return matches[0]
-
-
-def resolve_column_names(
-    columns_source: pd.DataFrame | Iterable[str],
-    user_column_names: Sequence[str],
-) -> list[str]:
-    return [
-        resolve_column_name(columns_source, user_column_name)
-        for user_column_name in user_column_names
-    ]

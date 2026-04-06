@@ -20,12 +20,6 @@ class _ReadOnlyList(list):
     sort = _blocked_mutation
 
 
-def _freeze_limits(limits):
-    if limits is None:
-        return None
-    return tuple(limits)
-
-
 _CONFIG = load_project_config()
 _PATHS = _CONFIG["paths"]
 _PLOT_DEFAULTS = _CONFIG["plot"]["defaults"]
@@ -34,15 +28,10 @@ _EXTREMA_DETECTION_DEFAULTS = _CONFIG["comparison_table"]["extrema_detection"]
 
 ROOT_DIR = PROJECT_ROOT_DIR
 OUTPUT_DIR = ROOT_DIR / _PATHS["output_dir"]
-PLOT_OUTPUT = OUTPUT_DIR / "poc_plot.jpg"
-CSV_OUTPUT = OUTPUT_DIR / "poc_table.csv"
 
 PLOT_X_COLUMN = _PLOT_DEFAULTS["x_column"]
 PLOT_Y_COLUMN = _PLOT_DEFAULTS["y_column"]
 CSV_COLUMNS = _ReadOnlyList(_CSV_DEFAULTS["columns"])
-
-X_LIMITS = _freeze_limits(_PLOT_DEFAULTS["x_limits"])
-Y_LIMITS = _freeze_limits(_PLOT_DEFAULTS["y_limits"])
 
 EXTREMA_WINDOW_POINTS = _EXTREMA_DETECTION_DEFAULTS["window_points"]
 EXTREMA_ZERO_THRESHOLD = _EXTREMA_DETECTION_DEFAULTS["zero_threshold"]

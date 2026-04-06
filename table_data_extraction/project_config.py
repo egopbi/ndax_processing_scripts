@@ -55,19 +55,6 @@ def _validate_string_list(value: Any, path: ConfigPath) -> None:
             )
 
 
-def _validate_string_mapping(value: Any, path: ConfigPath) -> None:
-    if not isinstance(value, dict):
-        raise ValueError(
-            f"Config key '{_format_path(path)}' must be a mapping."
-        )
-
-    for key, item in value.items():
-        if not isinstance(key, str) or not isinstance(item, str):
-            raise ValueError(
-                f"Config key '{_format_path(path)}' must contain only string keys and string values."
-            )
-
-
 def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
@@ -92,21 +79,6 @@ def _validate_non_negative_number(value: Any, path: ConfigPath) -> None:
         raise ValueError(
             f"Config key '{_format_path(path)}' must be a non-negative number."
         )
-
-
-def _validate_axis_limits(value: Any, path: ConfigPath) -> None:
-    if value is None:
-        return
-    if not isinstance(value, (list, tuple)) or len(value) != 2:
-        raise ValueError(
-            f"Config key '{_format_path(path)}' must be null or a two-item sequence."
-        )
-
-    for item in value:
-        if item is not None and not _is_number(item):
-            raise ValueError(
-                f"Config key '{_format_path(path)}' must contain only numbers or null."
-            )
 
 
 def _validate_schema(
@@ -137,8 +109,6 @@ _CONFIG_SCHEMA: SchemaNode = {
         "defaults": {
             "x_column": _validate_string,
             "y_column": _validate_string,
-            "x_limits": _validate_axis_limits,
-            "y_limits": _validate_axis_limits,
         },
     },
     "csv": {

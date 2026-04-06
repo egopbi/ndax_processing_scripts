@@ -24,6 +24,10 @@ from .preprocess import (
     trim_leading_rest_rows as trim_leading_rest_rows_stage_1,
 )
 from .plot_style import resolve_plot_colors
+from .time_utils import (
+    cumulative_time_from_timestamp_series,
+    timestamps_are_usable,
+)
 
 AxisLimits = tuple[float | None, float | None] | None
 STARTUP_TAIL_MIN_POINTS = 5
@@ -102,23 +106,10 @@ def _trim_leading_startup_tail(
 def _prepare_cumulative_time_hours(
     trimmed_frame: pd.DataFrame, source_frame: pd.DataFrame
 ) -> pd.Series:
-    timestamps = pd.to_datetime(
-        trimmed_frame["Timestamp"], errors="coerce", format="mixed"
+    cumulative_hours = cumulative_time_from_timestamp_series(
+        trimmed_frame["Timestamp"], divisor=3600
     )
-    cumulative_hours = (
-        timestamps - timestamps.iloc[0]
-    ).dt.total_seconds() / 3600
     return cumulative_hours.loc[source_frame.index]
-
-
-def _timestamps_are_usable(dataframe: pd.DataFrame) -> bool:
-    if "Timestamp" not in dataframe.columns:
-        return False
-
-    parsed_timestamps = pd.to_datetime(
-        dataframe["Timestamp"], errors="coerce", format="mixed"
-    )
-    return parsed_timestamps.notna().all()
 
 
 def prepare_plot_frame(
@@ -132,7 +123,7 @@ def prepare_plot_frame(
     trimmed_frame = _trim_leading_startup_tail(
         trim_leading_rest_rows(dataframe), y_col=y_col
     )
-    has_usable_timestamps = _timestamps_are_usable(trimmed_frame)
+    has_usable_timestamps = timestamps_are_usable(trimmed_frame)
     source_frame = trimmed_frame
     if not source_frame.empty:
         source_frame = source_frame.iloc[1:].copy()

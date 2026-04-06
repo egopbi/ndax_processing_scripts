@@ -41,6 +41,25 @@ def test_prepare_x_series_builds_cumulative_time_from_first_non_rest() -> None:
     assert prepared.is_monotonic_increasing
 
 
+def test_prepare_x_series_accepts_mixed_valid_timestamp_formats() -> None:
+    dataframe = pd.DataFrame({
+        "Status": ["Rest", "CC_DChg", "CC_DChg", "CC_DChg"],
+        "Time": [0.0, 111.0, 222.0, 333.0],
+        "Timestamp": [
+            "2026-01-01 00:00:00",
+            "2026-01-01 00:00:15",
+            "2026/01/01 00:00:45",
+            "2026-01-01T00:01:30",
+        ],
+    })
+
+    prepared = prepare_x_series(dataframe, "Time")
+
+    assert prepared.index.tolist() == [1, 2, 3]
+    assert prepared.tolist() == [0.0, 30.0, 75.0]
+    assert prepared.is_monotonic_increasing
+
+
 def test_prepare_x_series_uses_non_time_columns_as_is() -> None:
     dataframe = pd.DataFrame({
         "Status": ["Rest", "CC_DChg", "CC_DChg"],
