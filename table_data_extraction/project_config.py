@@ -166,11 +166,22 @@ def save_project_config(config: dict[str, Any]) -> None:
         yaml.safe_dump(normalized, file, sort_keys=False, allow_unicode=True)
 
     _load_project_config_cached.cache_clear()
+    _refresh_runtime_consumers(normalized)
 
 
 def reload_project_config() -> dict[str, Any]:
     _load_project_config_cached.cache_clear()
-    return load_project_config()
+    refreshed = load_project_config()
+    _refresh_runtime_consumers(refreshed)
+    return refreshed
+
+
+def _refresh_runtime_consumers(config: dict[str, Any]) -> None:
+    from . import config as config_module
+    from . import plot_style as plot_style_module
+
+    config_module.refresh_runtime_config(config)
+    plot_style_module.refresh_plot_palette(config)
 
 
 load_project_config.cache_clear = _load_project_config_cached.cache_clear  # type: ignore[attr-defined]
