@@ -29,7 +29,11 @@ def test_build_plot_command_uses_overridden_output_dir(tmp_path: Path) -> None:
     assert command.mode == "plot"
     assert command.argv[:2] == (
         "python-test",
+        "-u",
+    )
+    assert command.argv[2:4] == (
         str(Path("scripts/plot_ndax.py")),
+        "--files",
     )
     assert "--files" in command.argv
     assert "--output" in command.argv
@@ -56,7 +60,11 @@ def test_build_table_command_includes_anchor_x_and_labels(tmp_path: Path) -> Non
     assert command.mode == "table"
     assert command.argv[:2] == (
         "python-test",
+        "-u",
+    )
+    assert command.argv[2:4] == (
         str(Path("scripts/build_comparison_table.py")),
+        "--files",
     )
     anchor_index = command.argv.index("--anchor-x")
     assert command.argv[anchor_index + 1:anchor_index + 3] == ("0.5", "1.0")
@@ -75,6 +83,7 @@ def test_build_health_check_command_targets_script() -> None:
     assert command.mode == "health-check"
     assert command.argv == (
         "python-test",
+        "-u",
         str(Path("scripts/health_check_ndax.py")),
         "examples/example1_1.ndax",
     )

@@ -11,7 +11,11 @@ def _normalize_token(token: str) -> str:
     normalized = token.strip().strip('"').strip("'")
     if normalized.startswith("file://"):
         parsed = urlparse(normalized)
-        normalized = unquote(parsed.path)
+        path = unquote(parsed.path)
+        if parsed.netloc:
+            normalized = f"//{parsed.netloc}{path}"
+        else:
+            normalized = path
         if re.match(r"^/[A-Za-z]:", normalized):
             normalized = normalized[1:]
     return normalized

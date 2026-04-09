@@ -53,6 +53,10 @@ def _python_executable(python_executable: str | Path | None) -> str:
     return str(python_executable or sys.executable)
 
 
+def _python_argv(python_executable: str | Path | None) -> list[str]:
+    return [_python_executable(python_executable), "-u"]
+
+
 def _append_values(argv: list[str], flag: str, values: Iterable[object]) -> None:
     argv.append(flag)
     argv.extend(str(value) for value in values)
@@ -76,7 +80,7 @@ def build_plot_command(
         )
 
     argv = [
-        _python_executable(python_executable),
+        *_python_argv(python_executable),
         str(PLOT_SCRIPT),
     ]
     _append_values(argv, "--files", files)
@@ -122,7 +126,7 @@ def build_table_command(
         )
 
     argv = [
-        _python_executable(python_executable),
+        *_python_argv(python_executable),
         str(TABLE_SCRIPT),
     ]
     _append_values(argv, "--files", files)
@@ -149,7 +153,7 @@ def build_health_check_command(
     python_executable: str | Path | None = None,
 ) -> SubprocessCommand:
     argv = [
-        _python_executable(python_executable),
+        *_python_argv(python_executable),
         str(HEALTH_SCRIPT),
         str(Path(config.file)),
     ]

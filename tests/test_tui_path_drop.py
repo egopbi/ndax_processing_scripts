@@ -41,6 +41,14 @@ def test_parse_dropped_paths_supports_file_urls() -> None:
     assert parsed == (Path("C:/Data/example_1.ndax"),)
 
 
+def test_parse_dropped_paths_supports_unc_file_urls() -> None:
+    payload = "file://server/share/example_1.ndax"
+
+    parsed = parse_dropped_paths(payload)
+
+    assert parsed == (Path("//server/share/example_1.ndax"),)
+
+
 def test_file_list_appends_paths_from_paste_event() -> None:
     file_list = FileList()
 
