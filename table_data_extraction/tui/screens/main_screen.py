@@ -314,12 +314,11 @@ class MainScreen(Screen[None]):
             return None
         return float(stripped)
 
-    def _run_command_in_thread(self, command) -> None:
-        self.app.session_state.is_running = True
-        cancel_event = self.app._cancel_event
-        if cancel_event is None:
-            cancel_event = threading.Event()
-            self.app._cancel_event = cancel_event
+    def _run_command_in_thread(
+        self,
+        command,
+        cancel_event: threading.Event,
+    ) -> None:
         self.app.session_state.last_command_preview = " ".join(command.argv)
         self.app.call_from_thread(self.refresh_state_from_app)
         self.app.call_from_thread(
@@ -339,6 +338,27 @@ class MainScreen(Screen[None]):
             cancel_event=cancel_event,
         )
         self.app.call_from_thread(self._finish_command, result)
+
+    def _launch_subprocess_command(self, command) -> None:
+        if self.app.session_state.is_running:
+            self._log("A command is already running.")
+            return
+
+        self.app.session_state.is_running = True
+        self.app._cancel_event = threading.Event()
+        self.app.session_state.last_command_preview = " ".join(command.argv)
+
+        thread = threading.Thread(
+            target=self._run_command_in_thread,
+            args=(command, self.app._cancel_event),
+            daemon=True,
+        )
+        try:
+            thread.start()
+        except Exception:
+            self.app.session_state.is_running = False
+            self.app._cancel_event = None
+            raise
 
     def _finish_command(self, result) -> None:
         self.app.session_state.is_running = False
@@ -384,35 +404,15 @@ class MainScreen(Screen[None]):
         self.app.action_exit_app()
 
     def _start_run(self) -> None:
-        if self.app.session_state.is_running:
-            self._log("A command is already running.")
-            return
-
         try:
             command = self._build_active_command()
         except Exception as error:
             self._log(f"Build failed: {error}")
             return
 
-        self.app.session_state.is_running = True
-        self.app._cancel_event = threading.Event()
-        thread = threading.Thread(
-            target=self._run_command_in_thread,
-            args=(command,),
-            daemon=True,
-        )
-        try:
-            thread.start()
-        except Exception:
-            self.app.session_state.is_running = False
-            self.app._cancel_event = None
-            raise
+        self._launch_subprocess_command(command)
 
     def _run_health_check(self) -> None:
-        if self.app.session_state.is_running:
-            self._log("A command is already running.")
-            return
-
         try:
             command = build_health_check_command(
                 HealthCheckRunConfig(file=self._selected_health_file())
@@ -421,12 +421,7 @@ class MainScreen(Screen[None]):
             self._log(f"Health check failed: {error}")
             return
 
-        thread = threading.Thread(
-            target=self._run_command_in_thread,
-            args=(command,),
-            daemon=True,
-        )
-        thread.start()
+        self._launch_subprocess_command(command)
 
     def on_mount(self) -> None:
         self.refresh_state_from_app()

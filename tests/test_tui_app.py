@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Log, Select, TabbedContent
 
@@ -113,15 +114,39 @@ def test_column_load_failures_are_logged_and_disable_selects(monkeypatch) -> Non
     asyncio.run(_run())
 
 
-def test_exit_waits_for_command_cleanup_during_start_boundary(monkeypatch) -> None:
+@pytest.mark.parametrize("launch_mode", ["run", "health"])
+def test_exit_waits_for_command_cleanup_during_start_boundary(monkeypatch, launch_mode: str) -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         exit_calls: list[bool] = []
+        release = threading.Event()
 
         def _spy_exit(*args, **kwargs):
             exit_calls.append(True)
 
         original_start = threading.Thread.start
+        fake_command = SimpleNamespace(
+            argv=("python", "-u", "fake_script.py"),
+            output_path=None,
+        )
+
+        def _fake_run_subprocess_command(
+            command,
+            *,
+            on_output=None,
+            cancel_event=None,
+            env=None,
+        ):
+            assert cancel_event is not None
+            assert cancel_event.is_set()
+            assert release.wait(timeout=1)
+            return CompletedCommand(
+                command=command,
+                returncode=0,
+                stdout="",
+                stderr="",
+                was_cancelled=True,
+            )
 
         def _patched_start(self, *args, **kwargs):
             if getattr(getattr(self, "_target", None), "__name__", "") == "_run_command_in_thread":
@@ -131,31 +156,48 @@ def test_exit_waits_for_command_cleanup_during_start_boundary(monkeypatch) -> No
                 assert app._cancel_event is not None
                 assert app._cancel_event.is_set()
                 assert exit_calls == []
-                return None
+                return original_start(self, *args, **kwargs)
             return original_start(self, *args, **kwargs)
 
         async with app.run_test() as pilot:
             monkeypatch.setattr(app, "exit", _spy_exit)
             monkeypatch.setattr(threading.Thread, "start", _patched_start)
+
+            if launch_mode == "run":
+                monkeypatch.setattr(
+                    app.screen,
+                    "_build_active_command",
+                    lambda: fake_command,
+                )
+            else:
+                monkeypatch.setattr(
+                    "table_data_extraction.tui.screens.main_screen.build_health_check_command",
+                    lambda config: fake_command,
+                )
+                monkeypatch.setattr(
+                    app.screen,
+                    "_selected_health_file",
+                    lambda: Path("sample.ndax"),
+                )
+
             monkeypatch.setattr(
-                app.screen,
-                "_build_active_command",
-                lambda: SimpleNamespace(),
+                "table_data_extraction.tui.screens.main_screen.run_subprocess_command",
+                _fake_run_subprocess_command,
             )
 
-            app.screen.action_run_active()
+            if launch_mode == "run":
+                app.screen.action_run_active()
+            else:
+                app.screen._run_health_check()
+
             assert app._pending_exit is True
             assert exit_calls == []
 
-            app.screen._finish_command(
-                CompletedCommand(
-                    command=SimpleNamespace(output_path=None),
-                    returncode=0,
-                    stdout="",
-                    stderr="",
-                    was_cancelled=True,
-                )
-            )
+            release.set()
+            for _ in range(20):
+                if exit_calls == [True]:
+                    break
+                await pilot.pause()
             assert exit_calls == [True]
 
     asyncio.run(_run())
