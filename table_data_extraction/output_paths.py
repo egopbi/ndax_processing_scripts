@@ -35,14 +35,20 @@ def _instance_suffix(source_paths: Sequence[str | Path]) -> str:
     return "_".join(part for part in parts if part)
 
 
+def _resolve_output_dir(output_dir: str | Path | None) -> Path:
+    return Path(output_dir) if output_dir is not None else OUTPUT_DIR
+
+
 def default_plot_output_path(
     *,
     source_paths: Sequence[str | Path],
     resolved_x_column: str,
     resolved_y_column: str,
     timestamp: datetime | None = None,
+    output_dir: str | Path | None = None,
 ) -> Path:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    resolved_output_dir = _resolve_output_dir(output_dir)
+    resolved_output_dir.mkdir(parents=True, exist_ok=True)
     instance_suffix = _instance_suffix(source_paths)
     filename = (
         f"{sanitize_name(resolved_y_column)}-"
@@ -50,7 +56,7 @@ def default_plot_output_path(
         f"{_plot_timestamp_suffix(timestamp)}"
         f"{f'_{instance_suffix}' if instance_suffix else ''}.jpg"
     )
-    return OUTPUT_DIR / filename
+    return resolved_output_dir / filename
 
 
 def default_table_output_path(
@@ -58,12 +64,14 @@ def default_table_output_path(
     source_paths: Sequence[str | Path],
     resolved_y_column: str,
     timestamp: datetime | None = None,
+    output_dir: str | Path | None = None,
 ) -> Path:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    resolved_output_dir = _resolve_output_dir(output_dir)
+    resolved_output_dir.mkdir(parents=True, exist_ok=True)
     instance_suffix = _instance_suffix(source_paths)
     filename = (
         f"table_{_quantity_slug(resolved_y_column)}_"
         f"{_table_timestamp_suffix(timestamp)}"
         f"{f'_{instance_suffix}' if instance_suffix else ''}.csv"
     )
-    return OUTPUT_DIR / filename
+    return resolved_output_dir / filename

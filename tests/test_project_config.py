@@ -3,7 +3,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from table_data_extraction.project_config import load_project_config
+from table_data_extraction.project_config import (
+    load_project_config,
+    reload_project_config,
+    save_project_config,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -113,6 +117,85 @@ def test_load_project_config_returns_isolated_copy_per_call() -> None:
         "Charge_Capacity(mAh)",
         "Discharge_Capacity(mAh)",
     ]
+
+
+def test_save_project_config_round_trips_and_strips_meta(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from table_data_extraction import project_config as project_config_module
+
+    config_path = tmp_path / "project_config.yaml"
+    monkeypatch.setattr(project_config_module, "CONFIG_PATH", config_path)
+    project_config_module.load_project_config.cache_clear()
+
+    config = _valid_config()
+    config["_meta"] = {"config_path": "should-not-be-saved"}
+    config["paths"]["output_dir"] = "session-output"
+
+    save_project_config(config)
+
+    saved = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert saved == {
+        "paths": {"output_dir": "session-output"},
+        "plot": {
+            "palette": [
+                "#1718FE",
+                "#D35400",
+                "#128A0C",
+                "#7A44F6",
+                "#C0392B",
+                "#008AA6",
+                "#1B1F28",
+                "#A61E4D",
+            ],
+            "defaults": {
+                "x_column": "Time",
+                "y_column": "Voltage",
+            },
+        },
+        "csv": {
+            "defaults": {
+                "columns": [
+                    "Time",
+                    "Voltage",
+                    "Current(mA)",
+                    "Charge_Capacity(mAh)",
+                    "Discharge_Capacity(mAh)",
+                ],
+            },
+        },
+        "comparison_table": {
+            "extrema_detection": {
+                "window_points": 9,
+                "zero_threshold": 5.0,
+                "min_zone_points": 5,
+                "min_extrema_separation_points": 5,
+            },
+        },
+    }
+
+
+def test_reload_project_config_reflects_on_disk_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from table_data_extraction import project_config as project_config_module
+
+    config_path = tmp_path / "project_config.yaml"
+    config = _valid_config()
+    config["paths"]["output_dir"] = "first-output"
+    _write_config(config_path, config)
+    monkeypatch.setattr(project_config_module, "CONFIG_PATH", config_path)
+
+    first = reload_project_config()
+    assert first["paths"]["output_dir"] == "first-output"
+
+    config["paths"]["output_dir"] = "second-output"
+    _write_config(config_path, config)
+
+    second = reload_project_config()
+    assert second["paths"]["output_dir"] == "second-output"
 
 
 @pytest.mark.parametrize(

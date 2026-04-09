@@ -47,6 +47,7 @@ def test_python_policy_is_consistent_across_repo_docs_and_metadata() -> None:
 def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
     readme = _read_text(README_PATH)
 
+    assert r".\ndax_ui.cmd" in readme
     assert r".\plot_ndax.cmd --files examples\example1_1.ndax --y-column Voltage" in readme
     assert (
         r".\build_comparison_table.cmd --files examples\example1_1.ndax --y-column Voltage --anchor-x 0.5"

@@ -8,6 +8,16 @@ def _read_root_file(filename: str) -> str:
     return (ROOT_DIR / filename).read_text(encoding="utf-8")
 
 
+def test_ndax_ui_cmd_proxies_to_project_venv_python() -> None:
+    content = _read_root_file("ndax_ui.cmd").lower()
+
+    assert "%~dp0" in content
+    assert ".venv\\scripts\\python.exe" in content
+    assert "scripts\\ndax_tui.py" in content
+    assert "%*" in content
+    assert "setup_windows.cmd" in content
+
+
 def test_setup_windows_cmd_bootstraps_project_venv() -> None:
     content = _read_root_file("setup_windows.cmd").lower()
 
@@ -17,6 +27,7 @@ def test_setup_windows_cmd_bootstraps_project_venv() -> None:
     assert "pip install --upgrade pip" in content
     assert "pip install -r requirements.txt" in content
     assert "команда py не найдена" in content
+    assert "ndax_ui.cmd" in content
 
 
 def test_plot_ndax_cmd_proxies_to_project_venv_python() -> None:
@@ -42,6 +53,7 @@ def test_build_comparison_table_cmd_proxies_to_project_venv_python() -> None:
 def test_readme_is_windows_only_and_uses_helper_scripts() -> None:
     content = _read_root_file("README.md")
 
+    assert ".\\ndax_ui.cmd" in content
     assert ".\\setup_windows.cmd" in content
     assert ".\\plot_ndax.cmd" in content
     assert ".\\build_comparison_table.cmd" in content

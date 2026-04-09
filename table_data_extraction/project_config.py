@@ -23,6 +23,18 @@ def _normalize(value: Any) -> Any:
     return value
 
 
+def _denormalize(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _denormalize(item)
+            for key, item in value.items()
+            if key != "_meta"
+        }
+    if isinstance(value, list):
+        return [_denormalize(item) for item in value]
+    return value
+
+
 def _format_path(path: ConfigPath) -> str:
     return ".".join(path)
 
@@ -144,6 +156,21 @@ def _load_project_config_cached() -> dict[str, Any]:
 
 def load_project_config() -> dict[str, Any]:
     return deepcopy(_load_project_config_cached())
+
+
+def save_project_config(config: dict[str, Any]) -> None:
+    normalized = _normalize(_denormalize(config))
+    _validate_schema(normalized, _CONFIG_SCHEMA)
+
+    with CONFIG_PATH.open("w", encoding="utf-8") as file:
+        yaml.safe_dump(normalized, file, sort_keys=False, allow_unicode=True)
+
+    _load_project_config_cached.cache_clear()
+
+
+def reload_project_config() -> dict[str, Any]:
+    _load_project_config_cached.cache_clear()
+    return load_project_config()
 
 
 load_project_config.cache_clear = _load_project_config_cached.cache_clear  # type: ignore[attr-defined]

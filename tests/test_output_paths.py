@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 from table_data_extraction.config import OUTPUT_DIR
 from table_data_extraction.output_paths import (
@@ -93,6 +94,24 @@ def test_default_plot_output_path_joins_multiple_instance_prefixes() -> None:
     )
 
 
+def test_default_plot_output_path_supports_overridden_output_dir(
+    tmp_path: Path,
+) -> None:
+    timestamp = datetime(2026, 3, 28, 12, 34, 56)
+    override_dir = tmp_path / "session-output"
+
+    output_path = default_plot_output_path(
+        source_paths=["examples/example1_1.ndax"],
+        resolved_x_column="Time",
+        resolved_y_column="Voltage",
+        timestamp=timestamp,
+        output_dir=override_dir,
+    )
+
+    assert output_path.parent == override_dir
+    assert output_path.name == "voltage-time-2026-03-28_12-34-56_example1.jpg"
+
+
 def test_default_table_output_path_joins_multiple_instance_prefixes() -> None:
     timestamp = datetime(2026, 3, 29, 16, 7, 22)
 
@@ -106,3 +125,20 @@ def test_default_table_output_path_joins_multiple_instance_prefixes() -> None:
         output_path.name
         == "table_voltage_2026-03-29_16-07-22_example1_example2.csv"
     )
+
+
+def test_default_table_output_path_supports_overridden_output_dir(
+    tmp_path: Path,
+) -> None:
+    timestamp = datetime(2026, 3, 29, 16, 7, 22)
+    override_dir = tmp_path / "session-output"
+
+    output_path = default_table_output_path(
+        source_paths=["examples/example4_4.ndax"],
+        resolved_y_column="Voltage",
+        timestamp=timestamp,
+        output_dir=override_dir,
+    )
+
+    assert output_path.parent == override_dir
+    assert output_path.name == "table_voltage_2026-03-29_16-07-22_example4.csv"
