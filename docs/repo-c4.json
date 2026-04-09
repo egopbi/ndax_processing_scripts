@@ -1,0 +1,673 @@
+{
+  "meta": {
+    "version": "1.0",
+    "generated": "2026-04-09",
+    "root_path": ".",
+    "languages": [
+      "python",
+      "batchfile",
+      "yaml",
+      "markdown"
+    ],
+    "frameworks": [
+      "pandas",
+      "matplotlib",
+      "PyYAML"
+    ],
+    "description_1l": "Windows-first NDAX CLI tool for plots, comparison tables, and health checks.",
+    "description_short": "Single-container Python CLI tool that reads NDAX files, preprocesses battery test data, generates JPG plots, exports CSV comparison tables, and runs optional health checks. Windows .cmd launchers proxy into Python entrypoints in scripts/, while shared runtime logic and configuration live in table_data_extraction/ and project_config.yaml.",
+    "file_count_approx": 27,
+    "token_estimate": 3200
+  },
+  "system": {
+    "name": "NDAX Processing Scripts",
+    "type": "cli_tool",
+    "c4_level": "SystemContext",
+    "description": "Processes local NDAX battery-test files into plots and comparison tables and can validate expected columns for troubleshooting.",
+    "users": [
+      {
+        "name": "Battery Analyst",
+        "description": "Runs plotting and comparison-table workflows against local NDAX files."
+      },
+      {
+        "name": "Project Maintainer",
+        "description": "Maintains launcher scripts, configuration, and troubleshooting workflows."
+      }
+    ],
+    "top_boundary": "Local Windows-first CLI utility with batch launchers and Python scripts; it reads files from disk and writes JPG or CSV artifacts without a server or database."
+  },
+  "containers": [
+    {
+      "id": "ndax-cli",
+      "name": "NDAX CLI Runtime",
+      "c4_level": "Container",
+      "description": "Runs local NDAX processing workflows through Windows launchers and Python entrypoints.",
+      "technology": [
+        "Python 3.12",
+        "Windows .cmd launchers",
+        "pandas",
+        "matplotlib"
+      ],
+      "responsibilities": [
+        "Launch plotting and comparison-table commands",
+        "Read NDAX files into pandas DataFrames",
+        "Apply configuration defaults from project_config.yaml",
+        "Write JPG and CSV artifacts to disk",
+        "Run optional health checks for debugging"
+      ],
+      "entry_files": [
+        "setup_windows.cmd",
+        "plot_ndax.cmd",
+        "build_comparison_table.cmd",
+        "scripts/plot_ndax.py",
+        "scripts/build_comparison_table.py",
+        "scripts/health_check_ndax.py"
+      ],
+      "key_directories": [
+        "scripts/",
+        "table_data_extraction/",
+        "tests/",
+        "docs/"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "launcher-shell",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Windows Launchers",
+      "description": "Bootstraps the project venv and proxies user commands into the Python entrypoints.",
+      "responsibilities": [
+        "Create and update the local venv",
+        "Proxy plot runs into scripts/plot_ndax.py",
+        "Proxy table runs into scripts/build_comparison_table.py"
+      ],
+      "files": [
+        "setup_windows.cmd",
+        "plot_ndax.cmd",
+        "build_comparison_table.cmd"
+      ],
+      "file_groups": [],
+      "provides": [
+        "setup_windows.cmd",
+        "plot_ndax.cmd",
+        "build_comparison_table.cmd"
+      ],
+      "consumes_from": [
+        "plot-command",
+        "table-command"
+      ],
+      "data_flows": [
+        {
+          "from": "Battery Analyst",
+          "to": "here",
+          "trigger": "User runs a Windows command",
+          "payload": "CLI arguments and working directory"
+        }
+      ]
+    },
+    {
+      "id": "plot-command",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Plot CLI",
+      "description": "Parses plot CLI arguments, loads NDAX files, prepares plot-ready data, and writes the final JPG path.",
+      "responsibilities": [
+        "Parse plotting arguments",
+        "Resolve per-file labels",
+        "Coordinate plot preparation and image export"
+      ],
+      "files": [
+        "scripts/plot_ndax.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "_build_parser",
+        "run",
+        "main"
+      ],
+      "consumes_from": [
+        "ndax-reader",
+        "plotting-engine",
+        "export-and-output"
+      ],
+      "data_flows": [
+        {
+          "from": "launcher-shell",
+          "to": "here",
+          "trigger": "plot_ndax.cmd invocation",
+          "payload": "files + axis arguments + optional limits + output path"
+        }
+      ]
+    },
+    {
+      "id": "table-command",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Comparison Table CLI",
+      "description": "Parses table CLI arguments, computes extrema and short-circuit data, and exports the CSV table.",
+      "responsibilities": [
+        "Parse comparison-table arguments",
+        "Resolve anchor values and labels",
+        "Coordinate preprocessing, extrema search, and CSV export"
+      ],
+      "files": [
+        "scripts/build_comparison_table.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "_build_parser",
+        "run",
+        "main"
+      ],
+      "consumes_from": [
+        "ndax-reader",
+        "preprocess-and-time",
+        "comparison-analysis",
+        "export-and-output"
+      ],
+      "data_flows": [
+        {
+          "from": "launcher-shell",
+          "to": "here",
+          "trigger": "build_comparison_table.cmd invocation",
+          "payload": "files + y-column + anchor-x + optional labels and output path"
+        }
+      ]
+    },
+    {
+      "id": "health-command",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Health Check CLI",
+      "description": "Runs a focused NDAX validation against required plot and CSV columns for troubleshooting.",
+      "responsibilities": [
+        "Parse single-file health-check arguments",
+        "Load default required columns from config",
+        "Print a human-readable health report"
+      ],
+      "files": [
+        "scripts/health_check_ndax.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "_build_parser",
+        "main"
+      ],
+      "consumes_from": [
+        "config-contract",
+        "health-diagnostics"
+      ],
+      "data_flows": [
+        {
+          "from": "Project Maintainer",
+          "to": "here",
+          "trigger": "Manual troubleshooting run",
+          "payload": "one NDAX path"
+        }
+      ]
+    },
+    {
+      "id": "config-contract",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Configuration Contract",
+      "description": "Loads, validates, caches, and exposes repository configuration and plotting defaults.",
+      "responsibilities": [
+        "Validate project_config.yaml structure",
+        "Expose immutable runtime defaults",
+        "Expose plot palette and output directory settings"
+      ],
+      "files": [
+        "project_config.yaml",
+        "table_data_extraction/project_config.py",
+        "table_data_extraction/config.py",
+        "table_data_extraction/plot_style.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "load_project_config",
+        "OUTPUT_DIR",
+        "PLOT_X_COLUMN",
+        "PLOT_Y_COLUMN",
+        "CSV_COLUMNS",
+        "resolve_plot_colors"
+      ],
+      "consumes_from": [],
+      "data_flows": [
+        {
+          "from": "project_config.yaml",
+          "to": "here",
+          "trigger": "Runtime import or config load",
+          "payload": "paths, plot defaults, csv defaults, extrema detection settings"
+        }
+      ]
+    },
+    {
+      "id": "ndax-reader",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "NDAX Reader",
+      "description": "Loads NDAX files through NewareNDA and resolves column names used by the CLI workflows.",
+      "responsibilities": [
+        "Open NDAX files from disk",
+        "Convert reader output into pandas DataFrames",
+        "Resolve user-supplied column names against actual headers"
+      ],
+      "files": [
+        "table_data_extraction/reader.py",
+        "table_data_extraction/columns.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "load_ndax_dataframe",
+        "list_columns",
+        "resolve_column_name"
+      ],
+      "consumes_from": [],
+      "data_flows": [
+        {
+          "from": "Battery Analyst",
+          "to": "here",
+          "trigger": "CLI receives NDAX file paths",
+          "payload": "local .ndax files from disk"
+        }
+      ]
+    },
+    {
+      "id": "preprocess-and-time",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Preprocess And Time Helpers",
+      "description": "Normalizes time axes, trims leading rows, and decides whether timestamps are usable.",
+      "responsibilities": [
+        "Trim leading Rest rows",
+        "Prepare X series for analysis",
+        "Normalize timestamp-driven time calculations"
+      ],
+      "files": [
+        "table_data_extraction/preprocess.py",
+        "table_data_extraction/time_utils.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "trim_leading_rest_rows",
+        "prepare_x_series",
+        "timestamps_are_usable",
+        "cumulative_time_from_timestamp_series"
+      ],
+      "consumes_from": [],
+      "data_flows": []
+    },
+    {
+      "id": "plotting-engine",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Plotting Engine",
+      "description": "Transforms NDAX frames into plot-ready series, applies palette and limits, and writes JPG files.",
+      "responsibilities": [
+        "Prepare plot-ready frames",
+        "Resolve axis labels and limits",
+        "Render and save multi-series matplotlib plots"
+      ],
+      "files": [
+        "table_data_extraction/plotting.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "PlotSeries",
+        "prepare_plot_frame",
+        "resolve_plot_columns",
+        "resolve_axis_label",
+        "save_multi_series_plot"
+      ],
+      "consumes_from": [
+        "preprocess-and-time",
+        "comparison-analysis",
+        "config-contract"
+      ],
+      "data_flows": [
+        {
+          "from": "plot-command",
+          "to": "here",
+          "trigger": "Plot CLI orchestrates rendering",
+          "payload": "resolved DataFrames, labels, axis limits, output path"
+        }
+      ]
+    },
+    {
+      "id": "comparison-analysis",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Comparison Analysis",
+      "description": "Finds extrema windows, computes short-circuit timing, and builds table row structures.",
+      "responsibilities": [
+        "Compute six extrema positions around anchor points",
+        "Detect and round short-circuit timing",
+        "Build comparison table rows and headers"
+      ],
+      "files": [
+        "table_data_extraction/extrema.py",
+        "table_data_extraction/short_circuit.py",
+        "table_data_extraction/table_builder.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "ExtremaIndices",
+        "find_six_extrema_indices",
+        "detect_short_circuit_time_hours",
+        "round_short_circuit_hours",
+        "build_comparison_row",
+        "EXTREMA_COLUMNS"
+      ],
+      "consumes_from": [
+        "config-contract",
+        "preprocess-and-time"
+      ],
+      "data_flows": [
+        {
+          "from": "table-command",
+          "to": "here",
+          "trigger": "Comparison Table CLI requests analysis",
+          "payload": "trimmed x/y series plus anchor positions"
+        }
+      ]
+    },
+    {
+      "id": "export-and-output",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Export And Output Paths",
+      "description": "Builds default output filenames and writes CSV table artifacts.",
+      "responsibilities": [
+        "Build output paths from config and inputs",
+        "Write CSV slices and comparison tables",
+        "Format public extrema header labels"
+      ],
+      "files": [
+        "table_data_extraction/export.py",
+        "table_data_extraction/output_paths.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "save_csv_slice",
+        "save_comparison_table",
+        "format_extrema_header_labels",
+        "default_plot_output_path",
+        "default_table_output_path",
+        "sample_name_from_path",
+        "sanitize_name"
+      ],
+      "consumes_from": [
+        "config-contract",
+        "comparison-analysis"
+      ],
+      "data_flows": [
+        {
+          "from": "plot-command",
+          "to": "here",
+          "trigger": "Plot CLI needs a default JPG path",
+          "payload": "resolved columns + source paths"
+        },
+        {
+          "from": "table-command",
+          "to": "here",
+          "trigger": "Table CLI needs a default CSV path or table export",
+          "payload": "anchors + resolved y column + rows"
+        }
+      ]
+    },
+    {
+      "id": "health-diagnostics",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Health Diagnostics",
+      "description": "Validates required columns and formats troubleshooting reports for a single NDAX file.",
+      "responsibilities": [
+        "Validate non-empty NDAX data",
+        "Report missing required columns",
+        "Format a text health report"
+      ],
+      "files": [
+        "table_data_extraction/health.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "HealthCheckResult",
+        "run_health_check",
+        "format_health_check_report"
+      ],
+      "consumes_from": [
+        "ndax-reader"
+      ],
+      "data_flows": [
+        {
+          "from": "health-command",
+          "to": "here",
+          "trigger": "Health CLI requests validation",
+          "payload": "one NDAX file path + required columns"
+        }
+      ]
+    },
+    {
+      "id": "project-surface",
+      "container_id": "ndax-cli",
+      "c4_level": "Component",
+      "name": "Project Surface",
+      "description": "Holds package metadata, operator instructions, and a small sample-path helper used in tests.",
+      "responsibilities": [
+        "Declare package metadata and dependencies",
+        "Document Windows-first operator flows",
+        "Expose a sample NDAX path helper for tests"
+      ],
+      "files": [
+        "README.md",
+        "pyproject.toml",
+        "requirements.txt",
+        "table_data_extraction/__init__.py",
+        "table_data_extraction/_test_support.py"
+      ],
+      "file_groups": [],
+      "provides": [
+        "sample_ndax_path"
+      ],
+      "consumes_from": [],
+      "data_flows": []
+    }
+  ],
+  "dependencies": {
+    "internal": [
+      {
+        "from": "launcher-shell",
+        "to": "plot-command",
+        "type": "calls"
+      },
+      {
+        "from": "launcher-shell",
+        "to": "table-command",
+        "type": "calls"
+      },
+      {
+        "from": "plot-command",
+        "to": "ndax-reader",
+        "type": "calls"
+      },
+      {
+        "from": "plot-command",
+        "to": "plotting-engine",
+        "type": "calls"
+      },
+      {
+        "from": "plot-command",
+        "to": "export-and-output",
+        "type": "calls"
+      },
+      {
+        "from": "table-command",
+        "to": "ndax-reader",
+        "type": "calls"
+      },
+      {
+        "from": "table-command",
+        "to": "preprocess-and-time",
+        "type": "calls"
+      },
+      {
+        "from": "table-command",
+        "to": "comparison-analysis",
+        "type": "calls"
+      },
+      {
+        "from": "table-command",
+        "to": "export-and-output",
+        "type": "calls"
+      },
+      {
+        "from": "health-command",
+        "to": "config-contract",
+        "type": "config"
+      },
+      {
+        "from": "health-command",
+        "to": "health-diagnostics",
+        "type": "calls"
+      },
+      {
+        "from": "plotting-engine",
+        "to": "preprocess-and-time",
+        "type": "imports"
+      },
+      {
+        "from": "plotting-engine",
+        "to": "comparison-analysis",
+        "type": "imports"
+      },
+      {
+        "from": "plotting-engine",
+        "to": "config-contract",
+        "type": "config"
+      },
+      {
+        "from": "comparison-analysis",
+        "to": "config-contract",
+        "type": "config"
+      },
+      {
+        "from": "comparison-analysis",
+        "to": "preprocess-and-time",
+        "type": "imports"
+      },
+      {
+        "from": "export-and-output",
+        "to": "config-contract",
+        "type": "config"
+      },
+      {
+        "from": "export-and-output",
+        "to": "comparison-analysis",
+        "type": "imports"
+      },
+      {
+        "from": "health-diagnostics",
+        "to": "ndax-reader",
+        "type": "calls"
+      }
+    ],
+    "external": [
+      {
+        "name": "matplotlib",
+        "version": "3.10.8",
+        "purpose": "Offline JPG plotting backend."
+      },
+      {
+        "name": "newarenda",
+        "version": "2026.2.2",
+        "purpose": "Reads NDAX files into pandas-compatible structures."
+      },
+      {
+        "name": "pandas",
+        "version": "3.0.1",
+        "purpose": "Tabular processing for plotting, health checks, and CSV export."
+      },
+      {
+        "name": "pyyaml",
+        "version": "6.0.3",
+        "purpose": "Loads and validates project_config.yaml."
+      },
+      {
+        "name": "numpy",
+        "version": "2.4.3",
+        "purpose": "Supports extrema and numeric signal processing."
+      }
+    ]
+  },
+  "data_structures": [
+    {
+      "name": "ProjectConfigSchema",
+      "file": "table_data_extraction/project_config.py:103",
+      "description": "Required YAML schema for output paths, plot defaults, CSV defaults, and extrema-detection settings.",
+      "fields": {
+        "paths.output_dir": "string - default output directory relative to repo root",
+        "plot.palette": "list[str] - ordered plot colors",
+        "plot.defaults.x_column": "string - default X axis column name",
+        "plot.defaults.y_column": "string - default Y axis column name",
+        "csv.defaults.columns": "list[str] - required CSV export and health-check columns",
+        "comparison_table.extrema_detection": "mapping - window and threshold settings for extrema search"
+      }
+    },
+    {
+      "name": "PlotSeries",
+      "file": "table_data_extraction/plotting.py:37",
+      "description": "Single labeled line definition passed into multi-series plot rendering.",
+      "fields": {
+        "label": "str - legend label for the plotted line",
+        "frame": "pandas.DataFrame - normalized __plot_x__ and __plot_y__ values"
+      }
+    },
+    {
+      "name": "HealthCheckResult",
+      "file": "table_data_extraction/health.py:9",
+      "description": "Diagnostic result for one NDAX file checked against required columns.",
+      "fields": {
+        "path": "Path - source NDAX file",
+        "row_count": "int - number of rows in the loaded DataFrame",
+        "columns": "list[str] - available columns in the file",
+        "required_columns": "list[str] - expected plot and CSV columns",
+        "missing_columns": "list[str] - required columns not found"
+      }
+    },
+    {
+      "name": "ExtremaIndices",
+      "file": "table_data_extraction/extrema.py:16",
+      "description": "Mapping from public extrema labels to detected row indices or null when no extrema is found.",
+      "fields": {
+        "+U_l": "int | null - left positive extrema index",
+        "+U_m": "int | null - middle positive extrema index",
+        "+U_r": "int | null - right positive extrema index",
+        "-U_l": "int | null - left negative extrema index",
+        "-U_m": "int | null - middle negative extrema index",
+        "-U_r": "int | null - right negative extrema index"
+      }
+    }
+  ],
+  "external_services": [],
+  "glossary": [
+    {
+      "term": "NDAX",
+      "definition": "Battery-test data file format read through the NewareNDA library."
+    },
+    {
+      "term": "anchor-x",
+      "definition": "User-provided X-axis reference point that anchors extrema search in the comparison table workflow."
+    },
+    {
+      "term": "Short circuit",
+      "definition": "Derived event time computed from threshold and amplitude-collapse heuristics in the comparison workflow."
+    },
+    {
+      "term": "Rest rows",
+      "definition": "Leading rows with Status=Rest that are trimmed before analysis."
+    }
+  ]
+}
