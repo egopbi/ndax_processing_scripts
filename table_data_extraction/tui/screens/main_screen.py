@@ -11,11 +11,13 @@ from textual.widgets import (
     Input,
     Label,
     Log,
+    Select,
     Static,
     TabbedContent,
     TabPane,
 )
 
+from table_data_extraction.reader import list_columns
 from table_data_extraction.tui.command_builder import (
     build_health_check_command,
     build_plot_command,
@@ -59,8 +61,18 @@ class MainScreen(Screen[None]):
                         yield Button("Add Files...", id="plot-add-files")
                         yield Button("Clear Files", id="plot-clear-files")
                     yield FileList(id="plot-files", classes="file-list")
-                    yield Input(placeholder="Y column", value="Voltage", id="plot-y-column")
-                    yield Input(placeholder="X column", value="Time", id="plot-x-column")
+                    yield Select(
+                        [],
+                        prompt="Add files first",
+                        disabled=True,
+                        id="plot-y-column",
+                    )
+                    yield Select(
+                        [],
+                        prompt="Add files first",
+                        disabled=True,
+                        id="plot-x-column",
+                    )
                     with Collapsible(
                         title="Advanced",
                         collapsed=True,
@@ -88,12 +100,22 @@ class MainScreen(Screen[None]):
                         yield Button("Add Files...", id="table-add-files")
                         yield Button("Clear Files", id="table-clear-files")
                     yield FileList(id="table-files", classes="file-list")
-                    yield Input(placeholder="Y column", value="Voltage", id="table-y-column")
+                    yield Select(
+                        [],
+                        prompt="Add files first",
+                        disabled=True,
+                        id="table-y-column",
+                    )
+                    yield Select(
+                        [],
+                        prompt="Add files first",
+                        disabled=True,
+                        id="table-x-column",
+                    )
                     yield Input(
                         placeholder="Anchor X values, comma separated",
                         id="table-anchor-x",
                     )
-                    yield Input(placeholder="X column", value="Time", id="table-x-column")
                     with Collapsible(
                         title="Advanced",
                         collapsed=True,
@@ -127,6 +149,17 @@ class MainScreen(Screen[None]):
             return self.query_one("#table-files", FileList)
         return self.query_one("#plot-files", FileList)
 
+    def _column_selects_for_tab(self, tab_id: str) -> tuple[Select, Select]:
+        if tab_id == "table-tab":
+            return (
+                self.query_one("#table-y-column", Select),
+                self.query_one("#table-x-column", Select),
+            )
+        return (
+            self.query_one("#plot-y-column", Select),
+            self.query_one("#plot-x-column", Select),
+        )
+
     def refresh_state_from_app(self) -> None:
         output_dir = getattr(self.app, "current_output_dir", None)
         self.query_one("#current-output-dir", Static).update(
@@ -135,6 +168,60 @@ class MainScreen(Screen[None]):
 
     def _log(self, message: str) -> None:
         self.query_one("#run-log", Log).write_line(message)
+
+    def _selected_select_value(self, select: Select, field_name: str) -> str:
+        value = select.value
+        if value == Select.NULL:
+            raise ValueError(f"Select a {field_name} column first.")
+        return str(value)
+
+    def _collect_columns(self, paths: tuple[Path, ...]) -> tuple[str, ...]:
+        if not paths:
+            return ()
+
+        columns_by_file = [list_columns(path) for path in paths]
+        if not columns_by_file:
+            return ()
+
+        first_file_columns = columns_by_file[0]
+        common_columns = [
+            column
+            for column in first_file_columns
+            if all(column in set(columns) for columns in columns_by_file[1:])
+        ]
+        return tuple(common_columns)
+
+    def _apply_select_options(
+        self,
+        select: Select,
+        *,
+        columns: tuple[str, ...],
+        preferred: str,
+    ) -> None:
+        if not columns:
+            select.set_options([])
+            select.value = Select.NULL
+            select.disabled = True
+            return
+
+        current_value = select.value
+        select.set_options([(column, column) for column in columns])
+        select.disabled = False
+        if current_value != Select.NULL and str(current_value) in columns:
+            select.value = str(current_value)
+            return
+        select.value = preferred if preferred in columns else columns[0]
+
+    def _refresh_column_selects(self, tab_id: str, paths: tuple[Path, ...]) -> None:
+        try:
+            columns = self._collect_columns(paths)
+        except Exception as error:
+            self._log(f"Failed to load columns for {tab_id}: {error}")
+            columns = ()
+
+        y_select, x_select = self._column_selects_for_tab(tab_id)
+        self._apply_select_options(y_select, columns=columns, preferred="Voltage")
+        self._apply_select_options(x_select, columns=columns, preferred="Time")
 
     def _parse_labels(self, value: str) -> tuple[str, ...] | None:
         labels = tuple(item.strip() for item in value.split(",") if item.strip())
@@ -167,12 +254,17 @@ class MainScreen(Screen[None]):
             return build_table_command(
                 TableRunConfig(
                     files=self.query_one("#table-files", FileList).paths,
-                    y_column=self.query_one("#table-y-column", Input).value.strip(),
+                    y_column=self._selected_select_value(
+                        self.query_one("#table-y-column", Select),
+                        "Y",
+                    ),
                     anchor_x=self._parse_anchor_x(
                         self.query_one("#table-anchor-x", Input).value
                     ),
-                    x_column=self.query_one("#table-x-column", Input).value.strip()
-                    or "Time",
+                    x_column=self._selected_select_value(
+                        self.query_one("#table-x-column", Select),
+                        "X",
+                    ),
                     labels=self._parse_labels(
                         self.query_one("#table-labels", Input).value
                     ),
@@ -186,9 +278,14 @@ class MainScreen(Screen[None]):
         return build_plot_command(
             PlotRunConfig(
                 files=self.query_one("#plot-files", FileList).paths,
-                y_column=self.query_one("#plot-y-column", Input).value.strip(),
-                x_column=self.query_one("#plot-x-column", Input).value.strip()
-                or "Time",
+                y_column=self._selected_select_value(
+                    self.query_one("#plot-y-column", Select),
+                    "Y",
+                ),
+                x_column=self._selected_select_value(
+                    self.query_one("#plot-x-column", Select),
+                    "X",
+                ),
                 labels=self._parse_labels(
                     self.query_one("#plot-labels", Input).value
                 ),
@@ -244,11 +341,29 @@ class MainScreen(Screen[None]):
         self.app.session_state.is_running = False
         self.app.session_state.last_output_path = result.command.output_path
         self._log(f"Command finished with exit code {result.returncode}.")
+        self.app._cancel_event = None
+        if getattr(self.app, "_pending_exit", False):
+            self.app._pending_exit = False
+            self.app.exit()
 
-    def _choose_files_in_thread(self) -> None:
+    def _apply_selected_files(
+        self,
+        tab_id: str,
+        selected: tuple[Path, ...],
+    ) -> None:
+        if tab_id == "table-tab":
+            self.query_one("#table-files", FileList).add_paths(selected)
+        else:
+            self.query_one("#plot-files", FileList).add_paths(selected)
+
+    def _choose_files_in_thread(self, tab_id: str) -> None:
         selected = choose_ndax_files(initial_dir=self.app.current_output_dir)
         if selected:
-            self.app.call_from_thread(self.active_file_list.add_paths, selected)
+            self.app.call_from_thread(
+                self._apply_selected_files,
+                tab_id,
+                tuple(selected),
+            )
 
     def _choose_output_directory_in_thread(self) -> None:
         selected = choose_output_directory(initial_dir=self.app.current_output_dir)
@@ -305,12 +420,24 @@ class MainScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self.refresh_state_from_app()
+        plot_files = self.query_one("#plot-files", FileList)
+        table_files = self.query_one("#table-files", FileList)
+        plot_files.paths_changed_callback = lambda paths: self._refresh_column_selects(
+            "plot-tab",
+            paths,
+        )
+        table_files.paths_changed_callback = lambda paths: self._refresh_column_selects(
+            "table-tab",
+            paths,
+        )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
         if button_id in {"plot-add-files", "table-add-files"}:
+            tab_id = self.current_tab
             threading.Thread(
                 target=self._choose_files_in_thread,
+                args=(tab_id,),
                 daemon=True,
             ).start()
             return

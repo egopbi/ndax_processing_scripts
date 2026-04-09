@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Sequence
 
@@ -22,6 +23,7 @@ class FileList(Static):
         super().__init__(id=id, classes=classes)
         self.paths: tuple[Path, ...] = ()
         self._pending_render: Text | None = None
+        self.paths_changed_callback: Callable[[tuple[Path, ...]], None] | None = None
         self.set_paths(paths)
 
     def _render_text(self) -> Text:
@@ -43,9 +45,14 @@ class FileList(Static):
         except NoActiveAppError:
             self._pending_render = content
 
+    def _notify_paths_changed(self) -> None:
+        if self.paths_changed_callback is not None:
+            self.paths_changed_callback(self.paths)
+
     def set_paths(self, paths: Sequence[Path]) -> None:
         self.paths = tuple(Path(path) for path in paths)
         self._sync_render()
+        self._notify_paths_changed()
 
     def add_paths(self, paths: Sequence[Path]) -> None:
         existing = list(self.paths)
@@ -59,10 +66,12 @@ class FileList(Static):
             seen.add(key)
         self.paths = tuple(existing)
         self._sync_render()
+        self._notify_paths_changed()
 
     def clear_paths(self) -> None:
         self.paths = ()
         self._sync_render()
+        self._notify_paths_changed()
 
     def on_mount(self) -> None:
         if self._pending_render is not None:

@@ -31,6 +31,11 @@ class NdaxTuiApp(App[None]):
         border: round $accent;
     }
 
+    Select {
+        margin: 0 1 1 1;
+        width: 1fr;
+    }
+
     #current-output-dir, #settings-status {
         height: auto;
         margin: 0 1;
@@ -122,6 +127,7 @@ class NdaxTuiApp(App[None]):
         super().__init__()
         self.session_state = AppSessionState()
         self._cancel_event: threading.Event | None = None
+        self._pending_exit = False
         self._load_runtime_settings()
 
     def _load_runtime_settings(self) -> None:
@@ -143,7 +149,10 @@ class NdaxTuiApp(App[None]):
             self.screen.action_run_active()
 
     def action_exit_app(self) -> None:
-        self.request_cancel()
+        if self.session_state.is_running:
+            self._pending_exit = True
+            self.request_cancel()
+            return
         self.exit()
 
     def _settings_closed(self, result: dict[str, object] | None) -> None:
