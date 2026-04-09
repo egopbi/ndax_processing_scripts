@@ -1,8 +1,26 @@
+from typing import Any
+
 from .project_config import load_project_config
 
-_CONFIG = load_project_config()
 
-PLOT_COLOR_PALETTE: tuple[str, ...] = tuple(_CONFIG["plot"]["palette"])
+def _apply_plot_palette(config: dict[str, Any]) -> None:
+    global _CONFIG, PLOT_COLOR_PALETTE
+    _CONFIG = config
+    PLOT_COLOR_PALETTE = tuple(_CONFIG["plot"]["palette"])
+
+
+_CONFIG: dict[str, Any]
+PLOT_COLOR_PALETTE: tuple[str, ...]
+
+_apply_plot_palette(load_project_config())
+
+
+def refresh_plot_palette(
+    config: dict[str, Any] | None = None,
+) -> tuple[str, ...]:
+    refreshed = config if config is not None else load_project_config()
+    _apply_plot_palette(refreshed)
+    return PLOT_COLOR_PALETTE
 
 
 def resolve_plot_colors(series_count: int) -> list[str]:

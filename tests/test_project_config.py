@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 import yaml
@@ -15,6 +16,9 @@ def clear_project_config_cache() -> None:
     load_project_config.cache_clear()
     yield
     load_project_config.cache_clear()
+    from table_data_extraction import project_config as project_config_module
+
+    project_config_module.reload_project_config()
 
 
 def _write_config(config_path: Path, data: dict[str, object]) -> None:
@@ -133,47 +137,58 @@ def test_save_project_config_round_trips_and_strips_meta(
     config["_meta"] = {"config_path": "should-not-be-saved"}
     config["paths"]["output_dir"] = "session-output"
 
-    save_project_config(config)
+    try:
+        save_project_config(config)
 
-    saved = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    assert saved == {
-        "paths": {"output_dir": "session-output"},
-        "plot": {
-            "palette": [
-                "#1718FE",
-                "#D35400",
-                "#128A0C",
-                "#7A44F6",
-                "#C0392B",
-                "#008AA6",
-                "#1B1F28",
-                "#A61E4D",
-            ],
-            "defaults": {
-                "x_column": "Time",
-                "y_column": "Voltage",
-            },
-        },
-        "csv": {
-            "defaults": {
-                "columns": [
-                    "Time",
-                    "Voltage",
-                    "Current(mA)",
-                    "Charge_Capacity(mAh)",
-                    "Discharge_Capacity(mAh)",
+        saved = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        assert saved == {
+            "paths": {"output_dir": "session-output"},
+            "plot": {
+                "palette": [
+                    "#1718FE",
+                    "#D35400",
+                    "#128A0C",
+                    "#7A44F6",
+                    "#C0392B",
+                    "#008AA6",
+                    "#1B1F28",
+                    "#A61E4D",
                 ],
+                "defaults": {
+                    "x_column": "Time",
+                    "y_column": "Voltage",
+                },
             },
-        },
-        "comparison_table": {
-            "extrema_detection": {
-                "window_points": 9,
-                "zero_threshold": 5.0,
-                "min_zone_points": 5,
-                "min_extrema_separation_points": 5,
+            "csv": {
+                "defaults": {
+                    "columns": [
+                        "Time",
+                        "Voltage",
+                        "Current(mA)",
+                        "Charge_Capacity(mAh)",
+                        "Discharge_Capacity(mAh)",
+                    ],
+                },
             },
-        },
-    }
+            "comparison_table": {
+                "extrema_detection": {
+                    "window_points": 9,
+                    "zero_threshold": 5.0,
+                    "min_zone_points": 5,
+                    "min_extrema_separation_points": 5,
+                },
+            },
+        }
+    finally:
+        config_path.write_text(
+            yaml.safe_dump(_valid_config(), sort_keys=False),
+            encoding="utf-8",
+        )
+        project_config_module.CONFIG_PATH = (
+            Path(__file__).resolve().parents[1] / "project_config.yaml"
+        )
+        project_config_module.load_project_config.cache_clear()
+        project_config_module.reload_project_config()
 
 
 def test_reload_project_config_reflects_on_disk_changes(
@@ -181,21 +196,56 @@ def test_reload_project_config_reflects_on_disk_changes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from table_data_extraction import project_config as project_config_module
+    from table_data_extraction import config as config_module
+    from table_data_extraction import plot_style as plot_style_module
+    from table_data_extraction import output_paths as output_paths_module
 
     config_path = tmp_path / "project_config.yaml"
     config = _valid_config()
     config["paths"]["output_dir"] = "first-output"
+    config["plot"]["palette"] = ["#111111", "#222222", "#333333"]
     _write_config(config_path, config)
     monkeypatch.setattr(project_config_module, "CONFIG_PATH", config_path)
 
-    first = reload_project_config()
-    assert first["paths"]["output_dir"] == "first-output"
+    try:
+        first = reload_project_config()
+        assert first["paths"]["output_dir"] == "first-output"
+        assert config_module.OUTPUT_DIR == config_module.ROOT_DIR / "first-output"
+        assert plot_style_module.PLOT_COLOR_PALETTE == (
+            "#111111",
+            "#222222",
+            "#333333",
+        )
+        assert output_paths_module.default_table_output_path(
+            source_paths=["examples/example4_4.ndax"],
+            resolved_y_column="Voltage",
+            timestamp=datetime(2026, 3, 29, 16, 7, 22),
+        ).parent == config_module.OUTPUT_DIR
 
-    config["paths"]["output_dir"] = "second-output"
-    _write_config(config_path, config)
+        config["paths"]["output_dir"] = "second-output"
+        config["plot"]["palette"] = ["#aaaaaa", "#bbbbbb", "#cccccc"]
+        _write_config(config_path, config)
 
-    second = reload_project_config()
-    assert second["paths"]["output_dir"] == "second-output"
+        second = reload_project_config()
+        assert second["paths"]["output_dir"] == "second-output"
+        assert config_module.OUTPUT_DIR == config_module.ROOT_DIR / "second-output"
+        assert plot_style_module.PLOT_COLOR_PALETTE == (
+            "#aaaaaa",
+            "#bbbbbb",
+            "#cccccc",
+        )
+        assert output_paths_module.default_plot_output_path(
+            source_paths=["examples/example4_4.ndax"],
+            resolved_x_column="Time",
+            resolved_y_column="Voltage",
+            timestamp=datetime(2026, 3, 28, 12, 34, 56),
+        ).parent == config_module.OUTPUT_DIR
+    finally:
+        project_config_module.CONFIG_PATH = (
+            Path(__file__).resolve().parents[1] / "project_config.yaml"
+        )
+        project_config_module.load_project_config.cache_clear()
+        project_config_module.reload_project_config()
 
 
 @pytest.mark.parametrize(

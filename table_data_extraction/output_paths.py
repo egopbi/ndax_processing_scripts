@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
-from .config import OUTPUT_DIR
+from .config import get_output_dir
 
 
 def sanitize_name(value: str) -> str:
@@ -36,7 +36,7 @@ def _instance_suffix(source_paths: Sequence[str | Path]) -> str:
 
 
 def _resolve_output_dir(output_dir: str | Path | None) -> Path:
-    return Path(output_dir) if output_dir is not None else OUTPUT_DIR
+    return Path(output_dir) if output_dir is not None else get_output_dir()
 
 
 def default_plot_output_path(
