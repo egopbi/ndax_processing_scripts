@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import threading
 
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
@@ -46,54 +46,61 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                 "Select Default Output Directory...",
                 id="settings-select-output-dir",
             )
-        with Vertical(id="settings-form"):
-            yield Input(
-                value=self._current_config["plot"]["defaults"]["x_column"],
-                placeholder="Plot X column",
-                id="settings-plot-x",
-            )
-            yield Input(
-                value=self._current_config["plot"]["defaults"]["y_column"],
-                placeholder="Plot Y column",
-                id="settings-plot-y",
-            )
-            yield Input(
-                value=csv_columns,
-                placeholder="CSV columns, comma separated",
-                id="settings-csv-columns",
-            )
-            yield Input(
-                value=str(extrema["window_points"]),
-                placeholder="Window points",
-                id="settings-window-points",
-            )
-            yield Input(
-                value=str(extrema["zero_threshold"]),
-                placeholder="Zero threshold",
-                id="settings-zero-threshold",
-            )
-            yield Input(
-                value=str(extrema["min_zone_points"]),
-                placeholder="Minimum zone points",
-                id="settings-min-zone-points",
-            )
-            yield Input(
-                value=str(extrema["min_extrema_separation_points"]),
-                placeholder="Minimum extrema separation points",
-                id="settings-min-extrema-separation-points",
-            )
-            yield Label("Palette", id="settings-palette-label")
-            for index, color in enumerate(palette):
+        with VerticalScroll(id="settings-scroll"):
+            with Vertical(id="settings-form"):
                 yield Input(
-                    value=str(color),
-                    placeholder=f"Palette color {index + 1}",
-                    id=f"settings-palette-{index}",
+                    value=self._current_config["plot"]["defaults"]["x_column"],
+                    placeholder="Plot X column",
+                    id="settings-plot-x",
                 )
-            yield PalettePreview(palette, id="settings-palette-preview")
-        with Horizontal(id="settings-actions"):
-            yield Button("Save", variant="success", id="settings-save")
-            yield Button("Cancel", variant="default", id="settings-cancel")
-        yield Static("", id="settings-status")
+                yield Input(
+                    value=self._current_config["plot"]["defaults"]["y_column"],
+                    placeholder="Plot Y column",
+                    id="settings-plot-y",
+                )
+                yield Input(
+                    value=csv_columns,
+                    placeholder="CSV columns, comma separated",
+                    id="settings-csv-columns",
+                )
+                yield Input(
+                    value=str(extrema["window_points"]),
+                    placeholder="Window points",
+                    id="settings-window-points",
+                )
+                yield Input(
+                    value=str(extrema["zero_threshold"]),
+                    placeholder="Zero threshold",
+                    id="settings-zero-threshold",
+                )
+                yield Input(
+                    value=str(extrema["min_zone_points"]),
+                    placeholder="Minimum zone points",
+                    id="settings-min-zone-points",
+                )
+                yield Input(
+                    value=str(extrema["min_extrema_separation_points"]),
+                    placeholder="Minimum extrema separation points",
+                    id="settings-min-extrema-separation-points",
+                )
+                yield Label("Palette", id="settings-palette-label")
+                with Horizontal(id="settings-palette-section"):
+                    with Vertical(id="settings-palette-inputs"):
+                        for index, color in enumerate(palette):
+                            yield Input(
+                                value=str(color),
+                                placeholder=f"Palette color {index + 1}",
+                                id=f"settings-palette-{index}",
+                            )
+                    with Vertical(id="settings-preview-panel"):
+                        yield Label("Palette preview", id="settings-preview-title")
+                        yield PalettePreview(
+                            palette, id="settings-palette-preview"
+                        )
+                with Horizontal(id="settings-actions"):
+                    yield Button("Save", variant="success", id="settings-save")
+                    yield Button("Cancel", variant="default", id="settings-cancel")
+                yield Static("", id="settings-status")
 
     def _palette_values(self) -> list[str]:
         values: list[str] = []

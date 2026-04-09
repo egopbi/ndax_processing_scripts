@@ -25,7 +25,7 @@ class PalettePreview(Static):
             return text
 
         for index, color in enumerate(self._palette_colors):
-            sample = f" {index + 1}. ╱╲╱╲╱╲ {color} "
+            sample = f" {index + 1}. /\\/\\/\\ {color} "
             text.append(sample, style=f"{color} on white")
             if index < len(self._palette_colors) - 1:
                 text.append("\n", style="black on white")

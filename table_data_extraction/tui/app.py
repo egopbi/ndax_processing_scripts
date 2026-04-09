@@ -22,6 +22,10 @@ class NdaxTuiApp(App[None]):
         height: auto;
     }
 
+    #settings-body, #settings-scroll {
+        height: 1fr;
+    }
+
     #run-log {
         height: 12;
         border: round $accent;
@@ -74,6 +78,37 @@ class NdaxTuiApp(App[None]):
 
     #settings-top-bar Button {
         margin-left: 1;
+    }
+
+    #settings-scroll {
+        padding: 0 1 1 1;
+    }
+
+    #settings-palette-section {
+        height: auto;
+        margin: 0 1 1 1;
+    }
+
+    #settings-palette-inputs {
+        width: 1fr;
+    }
+
+    #settings-preview-panel {
+        width: 38;
+        margin-left: 1;
+        border: round $accent;
+        background: $panel;
+        padding: 0 1;
+    }
+
+    #settings-preview-title {
+        margin: 0 0 1 0;
+    }
+
+    #settings-preview-panel PalettePreview {
+        background: white;
+        color: black;
+        height: auto;
     }
     """
 

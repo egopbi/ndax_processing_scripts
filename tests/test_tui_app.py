@@ -1,5 +1,7 @@
 import asyncio
 
+from textual.containers import Horizontal, VerticalScroll
+
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.screens.settings_screen import SettingsScreen
 from table_data_extraction.tui.widgets.palette_preview import PalettePreview
@@ -29,11 +31,19 @@ def test_app_mounts_main_screen_widgets() -> None:
 def test_settings_screen_shows_palette_preview_and_inputs() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(80, 16)) as pilot:
             app.push_screen(SettingsScreen())
             await pilot.pause()
             assert app.screen.query_one("#settings-top-bar")
+            assert isinstance(app.screen.query_one("#settings-scroll"), VerticalScroll)
+            assert isinstance(
+                app.screen.query_one("#settings-palette-section"),
+                Horizontal,
+            )
+            assert app.screen.query_one("#settings-preview-panel")
             assert app.screen.query_one("#settings-plot-x")
             assert app.screen.query_one("#settings-palette-preview", PalettePreview)
+            assert app.screen.query_one("#settings-save")
+            assert app.screen.query_one("#settings-cancel")
 
     asyncio.run(_run())
