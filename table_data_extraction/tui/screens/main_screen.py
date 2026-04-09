@@ -316,7 +316,10 @@ class MainScreen(Screen[None]):
 
     def _run_command_in_thread(self, command) -> None:
         self.app.session_state.is_running = True
-        self.app._cancel_event = threading.Event()
+        cancel_event = self.app._cancel_event
+        if cancel_event is None:
+            cancel_event = threading.Event()
+            self.app._cancel_event = cancel_event
         self.app.session_state.last_command_preview = " ".join(command.argv)
         self.app.call_from_thread(self.refresh_state_from_app)
         self.app.call_from_thread(
@@ -333,7 +336,7 @@ class MainScreen(Screen[None]):
         result = run_subprocess_command(
             command,
             on_output=_capture_output,
-            cancel_event=self.app._cancel_event,
+            cancel_event=cancel_event,
         )
         self.app.call_from_thread(self._finish_command, result)
 
@@ -391,12 +394,19 @@ class MainScreen(Screen[None]):
             self._log(f"Build failed: {error}")
             return
 
+        self.app.session_state.is_running = True
+        self.app._cancel_event = threading.Event()
         thread = threading.Thread(
             target=self._run_command_in_thread,
             args=(command,),
             daemon=True,
         )
-        thread.start()
+        try:
+            thread.start()
+        except Exception:
+            self.app.session_state.is_running = False
+            self.app._cancel_event = None
+            raise
 
     def _run_health_check(self) -> None:
         if self.app.session_state.is_running:

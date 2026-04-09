@@ -8,7 +8,6 @@ from textual.widgets import Log, Select, TabbedContent
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.models import CompletedCommand
-from table_data_extraction.tui.screens.main_screen import MainScreen
 from table_data_extraction.tui.screens.settings_screen import SettingsScreen
 from table_data_extraction.tui.widgets.file_list import FileList
 from table_data_extraction.tui.widgets.palette_preview import PalettePreview
@@ -114,25 +113,38 @@ def test_column_load_failures_are_logged_and_disable_selects(monkeypatch) -> Non
     asyncio.run(_run())
 
 
-def test_exit_waits_for_command_cleanup() -> None:
+def test_exit_waits_for_command_cleanup_during_start_boundary(monkeypatch) -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
+        exit_calls: list[bool] = []
+
+        def _spy_exit(*args, **kwargs):
+            exit_calls.append(True)
+
+        original_start = threading.Thread.start
+
+        def _patched_start(self, *args, **kwargs):
+            if getattr(getattr(self, "_target", None), "__name__", "") == "_run_command_in_thread":
+                app.action_exit_app()
+                assert app._pending_exit is True
+                assert app.session_state.is_running is True
+                assert app._cancel_event is not None
+                assert app._cancel_event.is_set()
+                assert exit_calls == []
+                return None
+            return original_start(self, *args, **kwargs)
+
         async with app.run_test() as pilot:
-            app.session_state.is_running = True
-            app._cancel_event = threading.Event()
+            monkeypatch.setattr(app, "exit", _spy_exit)
+            monkeypatch.setattr(threading.Thread, "start", _patched_start)
+            monkeypatch.setattr(
+                app.screen,
+                "_build_active_command",
+                lambda: SimpleNamespace(),
+            )
 
-            exit_calls: list[bool] = []
-            original_exit = app.exit
-
-            def _spy_exit(*args, **kwargs):
-                exit_calls.append(True)
-                return original_exit(*args, **kwargs)
-
-            app.exit = _spy_exit  # type: ignore[assignment]
-
-            app.action_exit_app()
+            app.screen.action_run_active()
             assert app._pending_exit is True
-            assert app._cancel_event.is_set()
             assert exit_calls == []
 
             app.screen._finish_command(
@@ -144,7 +156,6 @@ def test_exit_waits_for_command_cleanup() -> None:
                     was_cancelled=True,
                 )
             )
-
             assert exit_calls == [True]
 
     asyncio.run(_run())
