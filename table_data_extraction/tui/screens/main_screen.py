@@ -8,8 +8,6 @@ from textual.screen import Screen
 from textual.widgets import (
     Button,
     Collapsible,
-    Footer,
-    Header,
     Input,
     Label,
     Log,
@@ -40,30 +38,36 @@ from table_data_extraction.tui.widgets.file_list import FileList
 class MainScreen(Screen[None]):
     BINDINGS = [
         ("f5", "run_active", "Run"),
-        ("f6", "cancel_run", "Cancel"),
+        ("f6", "exit_app", "Exit"),
         ("f8", "open_settings", "Settings"),
     ]
 
     def compose(self):
-        yield Header()
-        yield Footer()
-        yield Label("NDAX Terminal UI", id="main-title")
-        yield Static("", id="current-output-dir")
-        with Horizontal(id="main-actions"):
-            yield Button("Select Output Folder...", id="select-output-dir")
-            yield Button("Settings", id="open-settings")
-            yield Button("Run", variant="success", id="run-active")
-            yield Button("Cancel", variant="warning", id="cancel-run")
+        with Horizontal(id="main-top-bar"):
+            with Vertical(id="main-title-block"):
+                yield Label("NDAX Terminal UI", id="main-title")
+                yield Static("", id="current-output-dir")
+            yield Static("", classes="spacer")
+            with Horizontal(id="main-top-actions"):
+                yield Button("Select Output Folder...", id="select-output-dir")
+                yield Button("Settings", id="open-settings")
+                yield Button("Exit", variant="error", id="exit-app")
         with TabbedContent(initial="plot-tab", id="workflow-tabs"):
             with TabPane("Plot", id="plot-tab"):
                 with Vertical(id="plot-pane"):
                     with Horizontal():
                         yield Button("Add Files...", id="plot-add-files")
                         yield Button("Clear Files", id="plot-clear-files")
-                    yield FileList(id="plot-files")
+                    yield FileList(id="plot-files", classes="file-list")
                     yield Input(placeholder="Y column", value="Voltage", id="plot-y-column")
                     yield Input(placeholder="X column", value="Time", id="plot-x-column")
-                    with Collapsible(title="Advanced", collapsed=True, id="plot-advanced"):
+                    with Collapsible(
+                        title="Advanced",
+                        collapsed=True,
+                        collapsed_symbol=">",
+                        expanded_symbol="v",
+                        id="plot-advanced",
+                    ):
                         yield Input(placeholder="Labels, comma separated", id="plot-labels")
                         yield Input(placeholder="X min", id="plot-x-min")
                         yield Input(placeholder="X max", id="plot-x-max")
@@ -83,14 +87,20 @@ class MainScreen(Screen[None]):
                     with Horizontal():
                         yield Button("Add Files...", id="table-add-files")
                         yield Button("Clear Files", id="table-clear-files")
-                    yield FileList(id="table-files")
+                    yield FileList(id="table-files", classes="file-list")
                     yield Input(placeholder="Y column", value="Voltage", id="table-y-column")
                     yield Input(
                         placeholder="Anchor X values, comma separated",
                         id="table-anchor-x",
                     )
                     yield Input(placeholder="X column", value="Time", id="table-x-column")
-                    with Collapsible(title="Advanced", collapsed=True, id="table-advanced"):
+                    with Collapsible(
+                        title="Advanced",
+                        collapsed=True,
+                        collapsed_symbol=">",
+                        expanded_symbol="v",
+                        id="table-advanced",
+                    ):
                         yield Input(placeholder="Labels, comma separated", id="table-labels")
                         yield Input(
                             placeholder="Output filename override",
@@ -101,10 +111,11 @@ class MainScreen(Screen[None]):
                             variant="default",
                             id="table-health-check",
                         )
-        yield Static("Status: idle", id="run-status")
-        yield Static("Command: ", id="command-preview")
-        yield Static("Output: ", id="last-output-path")
         yield Log(id="run-log")
+        with Horizontal(id="main-bottom-bar"):
+            yield Static("", classes="spacer")
+            with Horizontal(id="main-bottom-actions"):
+                yield Button("Run", variant="success", id="run-active")
 
     @property
     def current_tab(self) -> str:
@@ -121,21 +132,9 @@ class MainScreen(Screen[None]):
         self.query_one("#current-output-dir", Static).update(
             f"Output directory: {output_dir}"
         )
-        command_preview = getattr(self.app, "session_state", None)
-        if command_preview is not None:
-            self.query_one("#command-preview", Static).update(
-                f"Command: {command_preview.last_command_preview}"
-            )
 
     def _log(self, message: str) -> None:
         self.query_one("#run-log", Log).write_line(message)
-
-    def _set_status(self, message: str) -> None:
-        self.query_one("#run-status", Static).update(f"Status: {message}")
-
-    def _set_output_path(self, output_path: Path | None) -> None:
-        label = "" if output_path is None else str(output_path)
-        self.query_one("#last-output-path", Static).update(f"Output: {label}")
 
     def _parse_labels(self, value: str) -> tuple[str, ...] | None:
         labels = tuple(item.strip() for item in value.split(",") if item.strip())
@@ -223,8 +222,10 @@ class MainScreen(Screen[None]):
         self.app._cancel_event = threading.Event()
         self.app.session_state.last_command_preview = " ".join(command.argv)
         self.app.call_from_thread(self.refresh_state_from_app)
-        self.app.call_from_thread(self._set_status, "running")
-        self.app.call_from_thread(self._set_output_path, command.output_path)
+        self.app.call_from_thread(
+            self._log,
+            f"Running: {' '.join(command.argv)}",
+        )
 
         def _capture_output(chunk: StreamChunk) -> None:
             self.app.call_from_thread(
@@ -242,14 +243,6 @@ class MainScreen(Screen[None]):
     def _finish_command(self, result) -> None:
         self.app.session_state.is_running = False
         self.app.session_state.last_output_path = result.command.output_path
-        if result.command.output_path is not None:
-            self._set_output_path(result.command.output_path)
-        status = (
-            f"cancelled ({result.returncode})"
-            if result.was_cancelled
-            else f"finished ({result.returncode})"
-        )
-        self._set_status(status)
         self._log(f"Command finished with exit code {result.returncode}.")
 
     def _choose_files_in_thread(self) -> None:
@@ -269,8 +262,8 @@ class MainScreen(Screen[None]):
     def action_run_active(self) -> None:
         self._start_run()
 
-    def action_cancel_run(self) -> None:
-        self.app.request_cancel()
+    def action_exit_app(self) -> None:
+        self.app.action_exit_app()
 
     def _start_run(self) -> None:
         if self.app.session_state.is_running:
@@ -280,7 +273,6 @@ class MainScreen(Screen[None]):
         try:
             command = self._build_active_command()
         except Exception as error:
-            self._set_status(f"failed to start: {error}")
             self._log(f"Build failed: {error}")
             return
 
@@ -301,7 +293,6 @@ class MainScreen(Screen[None]):
                 HealthCheckRunConfig(file=self._selected_health_file())
             )
         except Exception as error:
-            self._set_status(f"health check failed to start: {error}")
             self._log(f"Health check failed: {error}")
             return
 
@@ -335,11 +326,11 @@ class MainScreen(Screen[None]):
         if button_id == "run-active":
             self._start_run()
             return
-        if button_id == "cancel-run":
-            self.app.request_cancel()
-            return
         if button_id == "open-settings":
             self.app.action_open_settings()
+            return
+        if button_id == "exit-app":
+            self.app.action_exit_app()
             return
         if button_id in {"plot-health-check", "table-health-check"}:
             self._run_health_check()

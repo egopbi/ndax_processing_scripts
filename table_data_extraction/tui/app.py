@@ -18,7 +18,7 @@ class NdaxTuiApp(App[None]):
         layout: vertical;
     }
 
-    #main-actions, #settings-actions {
+    #main-top-bar, #main-bottom-bar, #settings-top-bar, #settings-actions {
         height: auto;
     }
 
@@ -27,7 +27,7 @@ class NdaxTuiApp(App[None]):
         border: round $accent;
     }
 
-    #current-output-dir, #run-status, #command-preview, #last-output-path, #settings-status {
+    #current-output-dir, #settings-status {
         height: auto;
         margin: 0 1;
     }
@@ -35,12 +35,52 @@ class NdaxTuiApp(App[None]):
     Input {
         margin: 0 1 1 1;
     }
+
+    #main-top-bar, #settings-top-bar {
+        padding: 0 1;
+    }
+
+    #main-title-block, #settings-title-block {
+        width: auto;
+    }
+
+    .spacer {
+        width: 1fr;
+    }
+
+    #main-top-actions, #main-bottom-actions {
+        width: auto;
+        height: auto;
+    }
+
+    #main-bottom-bar {
+        padding: 0 1 1 1;
+    }
+
+    #main-top-actions Button, #main-bottom-actions Button {
+        margin-left: 1;
+    }
+
+    .file-list {
+        border: round $accent;
+        background: $panel;
+        padding: 0 1;
+        margin: 0 1 1 1;
+    }
+
+    #settings-title, #main-title {
+        margin: 0 1 0 1;
+    }
+
+    #settings-top-bar Button {
+        margin-left: 1;
+    }
     """
 
     BINDINGS = [
         ("f8", "open_settings", "Settings"),
         ("f5", "run_active", "Run"),
-        ("f6", "cancel_active_run", "Cancel"),
+        ("f6", "exit_app", "Exit"),
     ]
 
     def __init__(self) -> None:
@@ -67,8 +107,9 @@ class NdaxTuiApp(App[None]):
         if isinstance(self.screen, MainScreen):
             self.screen.action_run_active()
 
-    def action_cancel_active_run(self) -> None:
+    def action_exit_app(self) -> None:
         self.request_cancel()
+        self.exit()
 
     def _settings_closed(self, result: dict[str, object] | None) -> None:
         if result is None:

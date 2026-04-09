@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import Sequence
 
 from textual import events
+from textual._context import NoActiveAppError
 from textual.widgets import Static
+from rich.text import Text
 
 from table_data_extraction.tui.path_drop import parse_dropped_paths
 
@@ -19,16 +21,31 @@ class FileList(Static):
     ) -> None:
         super().__init__(id=id, classes=classes)
         self.paths: tuple[Path, ...] = ()
+        self._pending_render: Text | None = None
         self.set_paths(paths)
 
-    def _render_text(self) -> str:
+    def _render_text(self) -> Text:
         if not self.paths:
-            return "No NDAX files selected."
-        return "\n".join(f"{index}. {path}" for index, path in enumerate(self.paths, start=1))
+            return Text("No NDAX files selected.", style="dim")
+
+        lines = Text()
+        for index, path in enumerate(self.paths, start=1):
+            if lines:
+                lines.append("\n")
+            lines.append(f"{index}. ", style="dim")
+            lines.append(str(path), style="bold #6bdcff")
+        return lines
+
+    def _sync_render(self) -> None:
+        content = self._render_text()
+        try:
+            self.update(content)
+        except NoActiveAppError:
+            self._pending_render = content
 
     def set_paths(self, paths: Sequence[Path]) -> None:
         self.paths = tuple(Path(path) for path in paths)
-        self.update(self._render_text())
+        self._sync_render()
 
     def add_paths(self, paths: Sequence[Path]) -> None:
         existing = list(self.paths)
@@ -41,11 +58,16 @@ class FileList(Static):
             existing.append(candidate)
             seen.add(key)
         self.paths = tuple(existing)
-        self.update(self._render_text())
+        self._sync_render()
 
     def clear_paths(self) -> None:
         self.paths = ()
-        self.update(self._render_text())
+        self._sync_render()
+
+    def on_mount(self) -> None:
+        if self._pending_render is not None:
+            self.update(self._pending_render)
+            self._pending_render = None
 
     def on_paste(self, event: events.Paste) -> None:
         dropped_paths = parse_dropped_paths(event.text)

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from pathlib import Path
 import threading
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Button, Footer, Header, Input, Label, Static
+from textual.widgets import Button, Input, Label, Static
 
 from table_data_extraction.project_config import load_project_config
 from table_data_extraction.tui.dialogs import choose_output_directory
@@ -35,17 +34,18 @@ class SettingsScreen(Screen[dict[str, object] | None]):
         csv_columns = ", ".join(self._current_config["csv"]["defaults"]["columns"])
         extrema = self._current_config["comparison_table"]["extrema_detection"]
 
-        yield Header()
-        yield Footer()
-        yield Label("Settings", id="settings-title")
-        yield Static(
-            f"Default output directory: {self._selected_output_dir}",
-            id="settings-output-dir",
-        )
-        yield Button(
-            "Select Default Output Directory...",
-            id="settings-select-output-dir",
-        )
+        with Horizontal(id="settings-top-bar"):
+            with Vertical(id="settings-title-block"):
+                yield Label("Settings", id="settings-title")
+                yield Static(
+                    f"Default output directory: {self._selected_output_dir}",
+                    id="settings-output-dir",
+                )
+            yield Static("", classes="spacer")
+            yield Button(
+                "Select Default Output Directory...",
+                id="settings-select-output-dir",
+            )
         with Vertical(id="settings-form"):
             yield Input(
                 value=self._current_config["plot"]["defaults"]["x_column"],
