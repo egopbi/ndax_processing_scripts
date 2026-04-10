@@ -37,8 +37,16 @@ def test_app_mounts_main_screen_widgets() -> None:
                 <= app.screen.query_one("#plot-add-files").region.y + 4
             )
             assert (
+                app.screen.query_one("#plot-column-helper", Static).region.y
+                <= app.screen.query_one("#plot-files", FileList).region.y + 2
+            )
+            assert (
                 app.screen.query_one("#table-files", FileList).region.y
                 <= app.screen.query_one("#table-add-files").region.y + 4
+            )
+            assert (
+                app.screen.query_one("#table-column-helper", Static).region.y
+                <= app.screen.query_one("#table-files", FileList).region.y + 2
             )
             await pilot.press("f8")
             await pilot.pause()

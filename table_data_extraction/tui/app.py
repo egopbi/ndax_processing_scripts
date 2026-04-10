@@ -110,7 +110,7 @@ class NdaxTuiApp(App[None]):
     .file-list {
         background: $panel;
         padding: 0 1;
-        margin: 0 1 1 1;
+        margin: 0 1 0 1;
     }
 
     #settings-title, #main-title {
@@ -126,13 +126,13 @@ class NdaxTuiApp(App[None]):
     }
 
     #plot-column-helper, #table-column-helper {
-        margin: 0 1 1 1;
+        margin: 0 1 0 1;
         height: auto;
     }
 
     #plot-column-controls, #table-column-controls {
         display: none;
-        margin: 0 1 1 1;
+        margin: 0 1 0 1;
     }
 
     #plot-column-controls Horizontal, #table-column-controls Horizontal {
