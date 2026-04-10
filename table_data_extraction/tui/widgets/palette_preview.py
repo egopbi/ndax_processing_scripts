@@ -36,6 +36,14 @@ class PalettePreview(Static):
             return "black"
         return color
 
+    @staticmethod
+    def _sample_for_color(color: str) -> str:
+        try:
+            Color.parse(color)
+        except Exception:
+            return "black"
+        return color
+
     def _render_preview(self) -> Text:
         text = Text()
         if not self._palette_colors:
@@ -44,7 +52,9 @@ class PalettePreview(Static):
 
         for index, color in enumerate(self._palette_colors):
             foreground = self._foreground_for_color(color)
-            text.append(color, style=f"bold {foreground} on white")
+            sample = self._sample_for_color(color)
+            text.append("~~~~~~ ", style=f"bold {sample} on white")
+            text.append(color, style=f"{foreground} on white")
             if index < len(self._palette_colors) - 1:
                 text.append("\n", style="black on white")
         return text

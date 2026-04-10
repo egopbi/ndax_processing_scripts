@@ -50,6 +50,14 @@ def test_app_mounts_main_screen_widgets() -> None:
                 <= 40
             )
             assert (
+                app.screen.query_one("#plot-columns-section").region.height
+                >= app.screen.query_one("#plot-files-section").region.height
+            )
+            assert (
+                app.screen.query_one("#table-columns-section").region.height
+                >= app.screen.query_one("#table-files-section").region.height
+            )
+            assert (
                 app.screen.query_one("#plot-files", FileList).region.y
                 <= app.screen.query_one("#plot-file-actions").region.y + 4
             )
@@ -262,7 +270,7 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             await pilot.pause()
             assert app.screen.query_one("#settings-top-bar")
             assert isinstance(app.screen.query_one("#settings-scroll"), VerticalScroll)
-            assert app.screen.query_one("#settings-back")
+            assert app.screen.query_one("#settings-main-menu")
             assert app.screen.query_one("#settings-defaults-section")
             assert app.screen.query_one("#settings-palette-section")
             assert app.screen.query_one("#settings-scroll").region.y < 10
@@ -272,18 +280,20 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             assert app.screen.query_one("#settings-plot-x")
             assert app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert app.screen.query_one("#settings-save")
-            assert app.screen.query_one("#settings-cancel")
+            assert app.screen.query_one("#settings-back")
+            assert len(app.screen.query("#settings-select-output-dir")) == 0
             assert (
                 app.screen.query_one("#settings-output-dir", Static).content
                 == str(app.current_output_dir)
             )
-            assert "/" not in app.screen.query_one(
-                "#settings-palette-preview", PalettePreview
-            ).content.plain
-            assert "#1718FE" in app.screen.query_one(
-                "#settings-palette-preview", PalettePreview
-            ).content.plain
-            await pilot.click("#settings-back")
+            preview = app.screen.query_one("#settings-palette-preview", PalettePreview)
+            assert "~~~~~~" in preview.content.plain
+            assert "#1718FE" in preview.content.plain
+            assert any(
+                "#1718FE" in str(span.style) and "on white" in str(span.style)
+                for span in preview.content.spans
+            )
+            await pilot.click("#settings-main-menu")
             await pilot.pause()
             assert isinstance(app.screen, MainScreen)
 
@@ -293,3 +303,17 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
 def test_palette_preview_uses_black_for_light_colors() -> None:
     assert PalettePreview._foreground_for_color("#f0f0f0") == "black"
     assert PalettePreview._foreground_for_color("#1718fe") == "#1718fe"
+
+
+def test_file_list_uses_blue_empty_state_and_gray_selected_paths() -> None:
+    empty_list = FileList()
+    empty_render = empty_list._render_text()
+    assert empty_render.plain == "No NDAX files selected."
+    assert any("#6db7ff" in str(span.style) for span in empty_render.spans)
+
+    selected_list = FileList([Path("one.ndax"), Path("two.ndax")])
+    selected_render = selected_list._render_text()
+    assert "one.ndax" in selected_render.plain
+    assert "two.ndax" in selected_render.plain
+    assert any("#b5bcc7" in str(span.style) for span in selected_render.spans)
+    assert all("#6bdcff" not in str(span.style) for span in selected_render.spans)

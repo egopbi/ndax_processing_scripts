@@ -11,6 +11,9 @@ from rich.text import Text
 
 from table_data_extraction.tui.path_drop import parse_dropped_paths
 
+FILE_LIST_ACCENT = "#6db7ff"
+FILE_LIST_SELECTED = "#b5bcc7"
+
 
 class FileList(Static):
     def __init__(
@@ -28,14 +31,16 @@ class FileList(Static):
 
     def _render_text(self) -> Text:
         if not self.paths:
-            return Text("No NDAX files selected.", style="dim")
+            text = Text()
+            text.append("No NDAX files selected.", style=f"bold {FILE_LIST_ACCENT}")
+            return text
 
         lines = Text()
         for index, path in enumerate(self.paths, start=1):
             if lines:
                 lines.append("\n")
             lines.append(f"{index}. ", style="dim")
-            lines.append(str(path), style="bold #6bdcff")
+            lines.append(str(path), style=f"bold {FILE_LIST_SELECTED}")
         return lines
 
     def _sync_render(self) -> None:

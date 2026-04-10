@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-import threading
-
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, Static
 
 from table_data_extraction.project_config import load_project_config
-from table_data_extraction.tui.dialogs import choose_output_directory
 from table_data_extraction.tui.settings_service import (
     build_updated_config,
     resolve_runtime_output_dir,
@@ -40,11 +36,7 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                 yield Label("Settings", id="settings-title")
                 yield Static("", classes="spacer")
                 with Horizontal(id="settings-top-actions"):
-                    yield Button(
-                        "Select output folder",
-                        id="settings-select-output-dir",
-                    )
-                    yield Button("Back", id="settings-back")
+                    yield Button("Main Menu", id="settings-main-menu")
             yield Static(
                 str(self._selected_output_dir),
                 id="settings-output-dir",
@@ -103,7 +95,7 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                         )
             with Horizontal(id="settings-actions"):
                 yield Button("Save", variant="success", id="settings-save")
-                yield Button("Cancel", variant="default", id="settings-cancel")
+                yield Button("Back", variant="default", id="settings-back")
             yield Static("", id="settings-status")
 
     def _palette_values(self) -> list[str]:
@@ -116,20 +108,6 @@ class SettingsScreen(Screen[dict[str, object] | None]):
 
     def _show_status(self, message: str) -> None:
         self.query_one("#settings-status", Static).update(message)
-
-    def _refresh_output_label(self) -> None:
-        self.query_one("#settings-output-dir", Static).update(
-            str(self._selected_output_dir)
-        )
-
-    def _choose_output_directory_in_thread(self) -> None:
-        selected = choose_output_directory(initial_dir=self._selected_output_dir)
-        if selected is not None:
-            self.app.call_from_thread(self._apply_selected_output_dir, selected)
-
-    def _apply_selected_output_dir(self, selected: Path) -> None:
-        self._selected_output_dir = selected
-        self._refresh_output_label()
 
     def _save(self) -> None:
         try:
@@ -160,12 +138,8 @@ class SettingsScreen(Screen[dict[str, object] | None]):
             self._refresh_preview()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "settings-select-output-dir":
-            thread = threading.Thread(
-                target=self._choose_output_directory_in_thread,
-                daemon=True,
-            )
-            thread.start()
+        if event.button.id == "settings-main-menu":
+            self.dismiss(None)
             return
 
         if event.button.id == "settings-save":
@@ -173,8 +147,4 @@ class SettingsScreen(Screen[dict[str, object] | None]):
             return
 
         if event.button.id == "settings-back":
-            self.dismiss(None)
-            return
-
-        if event.button.id == "settings-cancel":
             self.dismiss(None)
