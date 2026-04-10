@@ -32,6 +32,14 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#current-output-dir", Static).region.height == 1
             assert app.screen.query_one("#main-top-bar").region.height <= 4
             assert app.screen.query_one("#workflow-tabs").region.y < 10
+            assert (
+                app.screen.query_one("#plot-files", FileList).region.y
+                <= app.screen.query_one("#plot-add-files").region.y + 4
+            )
+            assert (
+                app.screen.query_one("#table-files", FileList).region.y
+                <= app.screen.query_one("#table-add-files").region.y + 4
+            )
             await pilot.press("f8")
             await pilot.pause()
             assert isinstance(app.screen, SettingsScreen)

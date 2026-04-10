@@ -41,6 +41,11 @@ class NdaxTuiApp(App[None]):
         padding: 0 1;
     }
 
+    #plot-file-actions, #table-file-actions {
+        height: auto;
+        width: auto;
+    }
+
     #settings-body, #settings-scroll {
         height: 1fr;
     }

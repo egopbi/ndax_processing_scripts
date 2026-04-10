@@ -71,7 +71,7 @@ class MainScreen(Screen[None]):
         with TabbedContent(initial="plot-tab", id="workflow-tabs"):
             with TabPane("Plot", id="plot-tab"):
                 with Vertical(id="plot-pane"):
-                    with Horizontal():
+                    with Horizontal(id="plot-file-actions"):
                         yield Button("Add Files...", id="plot-add-files")
                         yield Button("Clear Files", id="plot-clear-files")
                     yield FileList(id="plot-files", classes="file-list")
@@ -121,7 +121,7 @@ class MainScreen(Screen[None]):
                         )
             with TabPane("Comparison Table", id="table-tab"):
                 with Vertical(id="table-pane"):
-                    with Horizontal():
+                    with Horizontal(id="table-file-actions"):
                         yield Button("Add Files...", id="table-add-files")
                         yield Button("Clear Files", id="table-clear-files")
                     yield FileList(id="table-files", classes="file-list")
