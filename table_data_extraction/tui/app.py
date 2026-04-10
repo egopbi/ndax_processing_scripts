@@ -12,68 +12,154 @@ from table_data_extraction.tui.settings_service import resolve_runtime_output_di
 from table_data_extraction.tui.state import AppSessionState
 
 
-def _compact_path_text(value: str | Path | None, *, limit: int = 42) -> str:
-    if value is None:
-        return ""
-
-    text = str(value)
-    if len(text) <= limit:
-        return text
-
-    if limit <= 3:
-        return "..."[:limit]
-
-    return f"...{text[-(limit - 3):]}"
-
-
 class NdaxTuiApp(App[None]):
     CSS = """
     Screen {
         layout: vertical;
+        background: #0b0d10;
+        color: #e5e7eb;
+        scrollbar-background: #0f1216;
+        scrollbar-background-hover: #0f1216;
+        scrollbar-background-active: #0f1216;
+        scrollbar-color: #9db8ad;
+        scrollbar-color-hover: #b7ccc2;
+        scrollbar-color-active: #9db8ad;
+        scrollbar-gutter: stable;
     }
 
-    #main-top-bar, #main-bottom-bar, #settings-top-bar, #settings-actions {
+    #main-top-bar, #settings-top-bar {
         height: auto;
     }
 
     #main-top-bar, #settings-top-bar {
-        height: 4;
-        padding: 0 1;
+        margin: 0 1 1 1;
+        padding: 0;
     }
 
-    #plot-file-actions, #table-file-actions {
+    #output-folder-section, #mode-section, #logs-section,
+    #plot-pane, #table-pane,
+    #plot-files-section, #plot-columns-section,
+    #table-files-section, #table-columns-section,
+    #settings-defaults-section, #settings-palette-section {
+        height: auto;
+    }
+
+    #main-top-row, #settings-top-row {
         height: auto;
         width: auto;
     }
 
-    #settings-body, #settings-scroll {
-        height: 1fr;
+    #main-top-actions, #settings-top-actions, #main-bottom-actions {
+        width: auto;
+        height: auto;
+    }
+
+    #main-top-actions Button, #settings-top-actions Button, #main-bottom-actions Button {
+        margin-left: 1;
+    }
+
+    .section-shell {
+        background: #20242b;
+        border: ascii #343a43;
+        margin: 0 1 1 1;
+        padding: 0 1 1 1;
+    }
+
+    .section-title {
+        margin: 0 0 1 0;
+        color: #e5e7eb;
+    }
+
+    .surface-box {
+        background: #20242b;
+        border: ascii #343a43;
+    }
+
+    .attention-box {
+        background: #20242b;
+        border: ascii #9db8ad;
+        color: #d7e7df;
+    }
+
+    .path-value {
+        width: 1fr;
+        height: 1;
+        overflow-x: hidden;
+        text-overflow: ellipsis;
+        color: #e5e7eb;
+    }
+
+    #output-folder-row {
+        height: auto;
+        width: 1fr;
+    }
+
+    #output-folder-row Button {
+        width: auto;
+    }
+
+    #current-output-dir, #settings-output-dir {
+        width: 1fr;
+        height: 1;
+    }
+
+    .spacer, #main-title-spacer, #settings-title-spacer {
+        width: 1fr;
+    }
+
+    #workflow-tabs {
+        height: auto;
+    }
+
+    #mode-section {
+        padding-bottom: 0;
+    }
+
+    #mode-title, #files-title, #columns-title, #logs-title {
+        margin: 0 0 1 0;
+    }
+
+    #main-bottom-bar {
+        padding: 0 1 1 1;
     }
 
     #run-log {
         height: 10;
-        margin: 0 1 1 1;
+        margin: 0;
         padding: 0 1;
-        background: $panel;
+        background: #0b0d10;
+        border: ascii #9db8ad;
     }
 
     Select {
         margin: 0 1 1 1;
         width: 1fr;
-        border: none;
-        background: $panel;
+        background: #1d2228;
+        border: ascii #343a43;
+        color: #e5e7eb;
     }
 
     Input {
         margin: 0 1 1 1;
-        border: none;
-        background: $panel;
+        background: #1d2228;
+        border: ascii #343a43;
+        color: #e5e7eb;
     }
 
-    #current-output-dir, #settings-output-dir {
-        height: 1;
-        margin: 0 1;
-        width: 1fr;
+    Button {
+        background: #2a2f36;
+        color: #e5e7eb;
+        border: ascii #343a43;
+    }
+
+    Button:hover, Button:focus {
+        border: ascii #9db8ad;
+    }
+
+    #run-active {
+        background: #9db8ad;
+        color: #0b0d10;
+        border: ascii #9db8ad;
     }
 
     #settings-status {
@@ -82,47 +168,49 @@ class NdaxTuiApp(App[None]):
         width: 1fr;
     }
 
-    #main-title-block, #settings-title-block {
-        width: 1fr;
-    }
-
-    #main-top-row, #settings-top-row {
-        height: auto;
-    }
-
-    .spacer {
-        width: 1fr;
-    }
-
-    #main-top-actions, #main-bottom-actions, #settings-top-actions {
-        width: auto;
-        height: auto;
-    }
-
-    #main-bottom-bar {
-        padding: 0 1 1 1;
-    }
-
-    #main-top-actions Button, #main-bottom-actions Button {
-        margin-left: 1;
-    }
-
-    .file-list {
-        background: $panel;
-        padding: 0 1;
-        margin: 0 1 0 1;
-    }
-
-    #settings-title, #main-title {
-        margin: 0 1 0 1;
-    }
-
-    #settings-top-actions Button {
-        margin-left: 1;
-    }
-
     #settings-scroll {
+        height: auto;
         padding: 0 1 1 1;
+    }
+
+    #settings-body, #settings-scroll {
+        height: 1fr;
+    }
+
+    #settings-defaults-section {
+        margin-bottom: 1;
+    }
+
+    #settings-palette-section {
+        height: auto;
+        margin: 0 1 1 1;
+    }
+
+    #settings-palette {
+        width: 1fr;
+    }
+
+    #settings-preview-panel {
+        width: 24;
+        margin-left: 1;
+        background: #20242b;
+        border: ascii #9db8ad;
+        padding: 0 1;
+    }
+
+    #settings-preview-title {
+        margin: 0 0 1 0;
+    }
+
+    #settings-preview-panel PalettePreview {
+        background: white;
+        color: black;
+        height: auto;
+    }
+
+    #plot-file-actions, #table-file-actions {
+        height: auto;
+        width: auto;
     }
 
     #plot-column-helper, #table-column-helper {
@@ -144,30 +232,10 @@ class NdaxTuiApp(App[None]):
         margin: 0 1 0 0;
     }
 
-    #settings-palette-section {
-        height: auto;
-        margin: 0 1 1 1;
-    }
-
-    #settings-palette-inputs {
-        width: 1fr;
-    }
-
-    #settings-preview-panel {
-        width: 38;
-        margin-left: 1;
+    .file-list {
         background: $panel;
         padding: 0 1;
-    }
-
-    #settings-preview-title {
-        margin: 0 0 1 0;
-    }
-
-    #settings-preview-panel PalettePreview {
-        background: white;
-        color: black;
-        height: auto;
+        margin: 0 1 0 1;
     }
     """
 

@@ -37,20 +37,6 @@ from table_data_extraction.tui.runner import run_subprocess_command
 from table_data_extraction.tui.widgets.file_list import FileList
 
 
-def _format_compact_path(value: Path | None, *, limit: int = 42) -> str:
-    if value is None:
-        return ""
-
-    text = str(value)
-    if len(text) <= limit:
-        return text
-
-    if limit <= 3:
-        return "..."[:limit]
-
-    return f"...{text[-(limit - 3):]}"
-
-
 class MainScreen(Screen[None]):
     BINDINGS = [
         ("f5", "run_active", "Run"),
@@ -59,121 +45,138 @@ class MainScreen(Screen[None]):
     ]
 
     def compose(self):
-        with Vertical(id="main-top-bar"):
-            with Horizontal(id="main-top-row"):
+        with Vertical(id="main-shell"):
+            with Horizontal(id="main-top-bar"):
                 yield Label("NDAX Terminal UI", id="main-title")
                 yield Static("", classes="spacer")
                 with Horizontal(id="main-top-actions"):
-                    yield Button("Select Output Folder...", id="select-output-dir")
                     yield Button("Settings", id="open-settings")
-                    yield Button("Exit", variant="error", id="exit-app")
-            yield Static("", id="current-output-dir")
-        with TabbedContent(initial="plot-tab", id="workflow-tabs"):
-            with TabPane("Plot", id="plot-tab"):
-                with Vertical(id="plot-pane"):
-                    with Horizontal(id="plot-file-actions"):
-                        yield Button("Add Files...", id="plot-add-files")
-                        yield Button("Clear Files", id="plot-clear-files")
-                    yield FileList(id="plot-files", classes="file-list")
-                    yield Static(
-                        "Select NDAX files to enable column selectors.",
-                        id="plot-column-helper",
-                    )
-                    with Vertical(id="plot-column-controls"):
-                        with Horizontal():
-                            yield Label("Y column", classes="column-label")
-                            yield Select(
-                                [],
-                                prompt="Choose Y column",
-                                disabled=True,
-                                id="plot-y-column",
-                                compact=True,
-                            )
-                        with Horizontal():
-                            yield Label("X column", classes="column-label")
-                            yield Select(
-                                [],
-                                prompt="Choose X column",
-                                disabled=True,
-                                id="plot-x-column",
-                                compact=True,
-                            )
-                    with Collapsible(
-                        title="Advanced",
-                        collapsed=True,
-                        collapsed_symbol=">",
-                        expanded_symbol="v",
-                        id="plot-advanced",
-                    ):
-                        yield Input(placeholder="Labels, comma separated", id="plot-labels")
-                        yield Input(placeholder="X min", id="plot-x-min")
-                        yield Input(placeholder="X max", id="plot-x-max")
-                        yield Input(placeholder="Y min", id="plot-y-min")
-                        yield Input(placeholder="Y max", id="plot-y-max")
-                        yield Input(
-                            placeholder="Output filename override",
-                            id="plot-output",
-                        )
-                        yield Button(
-                            "Run Health Check",
-                            variant="default",
-                            id="plot-health-check",
-                        )
-            with TabPane("Comparison Table", id="table-tab"):
-                with Vertical(id="table-pane"):
-                    with Horizontal(id="table-file-actions"):
-                        yield Button("Add Files...", id="table-add-files")
-                        yield Button("Clear Files", id="table-clear-files")
-                    yield FileList(id="table-files", classes="file-list")
-                    yield Static(
-                        "Select NDAX files to enable column selectors.",
-                        id="table-column-helper",
-                    )
-                    with Vertical(id="table-column-controls"):
-                        with Horizontal():
-                            yield Label("Y column", classes="column-label")
-                            yield Select(
-                                [],
-                                prompt="Choose Y column",
-                                disabled=True,
-                                id="table-y-column",
-                                compact=True,
-                            )
-                        with Horizontal():
-                            yield Label("X column", classes="column-label")
-                            yield Select(
-                                [],
-                                prompt="Choose X column",
-                                disabled=True,
-                                id="table-x-column",
-                                compact=True,
-                            )
-                    yield Input(
-                        placeholder="Anchor X values, comma separated",
-                        id="table-anchor-x",
-                    )
-                    with Collapsible(
-                        title="Advanced",
-                        collapsed=True,
-                        collapsed_symbol=">",
-                        expanded_symbol="v",
-                        id="table-advanced",
-                    ):
-                        yield Input(placeholder="Labels, comma separated", id="table-labels")
-                        yield Input(
-                            placeholder="Output filename override",
-                            id="table-output",
-                        )
-                        yield Button(
-                            "Run Health Check",
-                            variant="default",
-                            id="table-health-check",
-                        )
-        yield Log(id="run-log")
-        with Horizontal(id="main-bottom-bar"):
-            yield Static("", classes="spacer")
-            with Horizontal(id="main-bottom-actions"):
-                yield Button("Run", variant="success", id="run-active")
+                    yield Button("Exit", id="exit-app")
+            with Vertical(id="output-folder-section", classes="section-shell"):
+                yield Label("Output folder", classes="section-title")
+                with Horizontal(id="output-folder-row"):
+                    yield Button("Select output folder", id="select-output-dir")
+                    yield Static("", id="current-output-dir", classes="path-value")
+            with Vertical(id="mode-section", classes="section-shell"):
+                yield Label("Mode", id="mode-title", classes="section-title")
+                with TabbedContent(initial="plot-tab", id="workflow-tabs"):
+                    with TabPane("Plot", id="plot-tab"):
+                        with Vertical(id="plot-pane"):
+                            with Vertical(id="plot-files-section"):
+                                yield Label("Files", classes="section-title")
+                                with Horizontal(id="plot-file-actions"):
+                                    yield Button("Add Files", id="plot-add-files")
+                                    yield Button("Clear Files", id="plot-clear-files")
+                                yield FileList(id="plot-files", classes="file-list")
+                            with Vertical(id="plot-columns-section"):
+                                yield Label("Columns", classes="section-title")
+                                yield Static(
+                                    "Select NDAX files to enable column selectors.",
+                                    id="plot-column-helper",
+                                    classes="attention-box",
+                                )
+                                with Vertical(id="plot-column-controls"):
+                                    with Horizontal():
+                                        yield Label("Y column", classes="column-label")
+                                        yield Select(
+                                            [],
+                                            prompt="Choose Y column",
+                                            disabled=True,
+                                            id="plot-y-column",
+                                            compact=True,
+                                        )
+                                    with Horizontal():
+                                        yield Label("X column", classes="column-label")
+                                        yield Select(
+                                            [],
+                                            prompt="Choose X column",
+                                            disabled=True,
+                                            id="plot-x-column",
+                                            compact=True,
+                                        )
+                                with Collapsible(
+                                    title="Advanced",
+                                    collapsed=True,
+                                    collapsed_symbol=">",
+                                    expanded_symbol="v",
+                                    id="plot-advanced",
+                                ):
+                                    yield Input(placeholder="Labels, comma separated", id="plot-labels")
+                                    yield Input(placeholder="X min", id="plot-x-min")
+                                    yield Input(placeholder="X max", id="plot-x-max")
+                                    yield Input(placeholder="Y min", id="plot-y-min")
+                                    yield Input(placeholder="Y max", id="plot-y-max")
+                                    yield Input(
+                                        placeholder="Output filename override",
+                                        id="plot-output",
+                                    )
+                                    yield Button(
+                                        "Run Health Check",
+                                        variant="default",
+                                        id="plot-health-check",
+                                    )
+                    with TabPane("Comparison Table", id="table-tab"):
+                        with Vertical(id="table-pane"):
+                            with Vertical(id="table-files-section"):
+                                yield Label("Files", classes="section-title")
+                                with Horizontal(id="table-file-actions"):
+                                    yield Button("Add Files", id="table-add-files")
+                                    yield Button("Clear Files", id="table-clear-files")
+                                yield FileList(id="table-files", classes="file-list")
+                            with Vertical(id="table-columns-section"):
+                                yield Label("Columns", classes="section-title")
+                                yield Static(
+                                    "Select NDAX files to enable column selectors.",
+                                    id="table-column-helper",
+                                    classes="attention-box",
+                                )
+                                with Vertical(id="table-column-controls"):
+                                    with Horizontal():
+                                        yield Label("Y column", classes="column-label")
+                                        yield Select(
+                                            [],
+                                            prompt="Choose Y column",
+                                            disabled=True,
+                                            id="table-y-column",
+                                            compact=True,
+                                        )
+                                    with Horizontal():
+                                        yield Label("X column", classes="column-label")
+                                        yield Select(
+                                            [],
+                                            prompt="Choose X column",
+                                            disabled=True,
+                                            id="table-x-column",
+                                            compact=True,
+                                        )
+                                yield Input(
+                                    placeholder="Anchor X values, comma separated",
+                                    id="table-anchor-x",
+                                )
+                                with Collapsible(
+                                    title="Advanced",
+                                    collapsed=True,
+                                    collapsed_symbol=">",
+                                    expanded_symbol="v",
+                                    id="table-advanced",
+                                ):
+                                    yield Input(placeholder="Labels, comma separated", id="table-labels")
+                                    yield Input(
+                                        placeholder="Output filename override",
+                                        id="table-output",
+                                    )
+                                    yield Button(
+                                        "Run Health Check",
+                                        variant="default",
+                                        id="table-health-check",
+                                    )
+            with Vertical(id="logs-section"):
+                yield Label("Logs", id="logs-title", classes="section-title")
+                yield Log(id="run-log")
+            with Horizontal(id="main-bottom-bar"):
+                yield Static("", classes="spacer")
+                with Horizontal(id="main-bottom-actions"):
+                    yield Button("Run", variant="success", id="run-active")
 
     @property
     def current_tab(self) -> str:
@@ -218,7 +221,7 @@ class MainScreen(Screen[None]):
     def refresh_state_from_app(self) -> None:
         output_dir = getattr(self.app, "current_output_dir", None)
         self.query_one("#current-output-dir", Static).update(
-            f"Output: {_format_compact_path(output_dir)}"
+            "" if output_dir is None else str(output_dir)
         )
 
     def _log(self, message: str) -> None:

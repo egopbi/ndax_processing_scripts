@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Log, Select, Static, TabbedContent
+from textual.widgets import Input, Log, Select, Static, TabbedContent
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.models import CompletedCommand
@@ -20,7 +20,10 @@ def test_app_mounts_main_screen_widgets() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(84, 40)) as pilot:
             assert app.screen.query_one("#main-top-bar")
+            assert app.screen.query_one("#output-folder-section")
+            assert app.screen.query_one("#mode-section")
             assert app.screen.query_one("#workflow-tabs")
+            assert app.screen.query_one("#logs-section")
             assert app.screen.query_one("#run-log", Log)
             assert app.screen.query_one("#exit-app")
             assert app.screen.query_one("#run-active")
@@ -29,24 +32,28 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#table-column-helper", Static)
             assert not app.screen.query_one("#plot-column-controls").display
             assert not app.screen.query_one("#table-column-controls").display
-            assert app.screen.query_one("#current-output-dir", Static).region.height == 1
+            assert (
+                app.screen.query_one("#current-output-dir", Static).content
+                == str(app.current_output_dir)
+            )
             assert app.screen.query_one("#main-top-bar").region.height <= 4
-            assert app.screen.query_one("#workflow-tabs").region.y < 10
+            assert app.screen.query_one("#output-folder-section").region.y < 10
+            assert app.screen.query_one("#mode-section").region.y < 15
             assert (
                 app.screen.query_one("#plot-files", FileList).region.y
-                <= app.screen.query_one("#plot-add-files").region.y + 4
+                <= app.screen.query_one("#plot-file-actions").region.y + 4
             )
             assert (
                 app.screen.query_one("#plot-column-helper", Static).region.y
-                <= app.screen.query_one("#plot-files", FileList).region.y + 2
+                <= app.screen.query_one("#plot-files", FileList).region.y + 3
             )
             assert (
                 app.screen.query_one("#table-files", FileList).region.y
-                <= app.screen.query_one("#table-add-files").region.y + 4
+                <= app.screen.query_one("#table-file-actions").region.y + 4
             )
             assert (
                 app.screen.query_one("#table-column-helper", Static).region.y
-                <= app.screen.query_one("#table-files", FileList).region.y + 2
+                <= app.screen.query_one("#table-files", FileList).region.y + 3
             )
             await pilot.press("f8")
             await pilot.pause()
@@ -246,17 +253,26 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             assert app.screen.query_one("#settings-top-bar")
             assert isinstance(app.screen.query_one("#settings-scroll"), VerticalScroll)
             assert app.screen.query_one("#settings-back")
-            assert isinstance(
-                app.screen.query_one("#settings-palette-section"),
-                Horizontal,
-            )
+            assert app.screen.query_one("#settings-defaults-section")
+            assert app.screen.query_one("#settings-palette-section")
             assert app.screen.query_one("#settings-scroll").region.y < 10
-            assert app.screen.query_one("#settings-form").region.y < 10
+            assert app.screen.query_one("#settings-defaults-section").region.y < 10
             assert app.screen.query_one("#settings-preview-panel")
+            assert app.screen.query_one("#settings-palette", Input)
             assert app.screen.query_one("#settings-plot-x")
             assert app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert app.screen.query_one("#settings-save")
             assert app.screen.query_one("#settings-cancel")
+            assert (
+                app.screen.query_one("#settings-output-dir", Static).content
+                == str(app.current_output_dir)
+            )
+            assert "/" not in app.screen.query_one(
+                "#settings-palette-preview", PalettePreview
+            ).content.plain
+            assert "#1718FE" in app.screen.query_one(
+                "#settings-palette-preview", PalettePreview
+            ).content.plain
             await pilot.click("#settings-back")
             await pilot.pause()
             assert isinstance(app.screen, MainScreen)
