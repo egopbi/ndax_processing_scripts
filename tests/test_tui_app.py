@@ -40,6 +40,16 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#output-folder-section").region.y < 10
             assert app.screen.query_one("#mode-section").region.y < 15
             assert (
+                app.screen.query_one("#run-log", Log).region.y
+                + app.screen.query_one("#run-log", Log).region.height
+                <= 40
+            )
+            assert (
+                app.screen.query_one("#run-active").region.y
+                + app.screen.query_one("#run-active").region.height
+                <= 40
+            )
+            assert (
                 app.screen.query_one("#plot-files", FileList).region.y
                 <= app.screen.query_one("#plot-file-actions").region.y + 4
             )
@@ -278,3 +288,8 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             assert isinstance(app.screen, MainScreen)
 
     asyncio.run(_run())
+
+
+def test_palette_preview_uses_black_for_light_colors() -> None:
+    assert PalettePreview._foreground_for_color("#f0f0f0") == "black"
+    assert PalettePreview._foreground_for_color("#1718fe") == "#1718fe"

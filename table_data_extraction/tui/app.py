@@ -27,12 +27,17 @@ class NdaxTuiApp(App[None]):
         scrollbar-gutter: stable;
     }
 
+    #main-shell {
+        height: 1fr;
+        min-height: 0;
+    }
+
     #main-top-bar, #settings-top-bar {
         height: auto;
     }
 
     #main-top-bar, #settings-top-bar {
-        margin: 0 1 1 1;
+        margin: 0 1 0 1;
         padding: 0;
     }
 
@@ -61,8 +66,8 @@ class NdaxTuiApp(App[None]):
     .section-shell {
         background: #20242b;
         border: ascii #343a43;
-        margin: 0 1 1 1;
-        padding: 0 1 1 1;
+        margin: 0 1 0 1;
+        padding: 0 1 0 1;
     }
 
     .section-title {
@@ -108,11 +113,13 @@ class NdaxTuiApp(App[None]):
     }
 
     #workflow-tabs {
-        height: auto;
+        height: 1fr;
+        min-height: 0;
     }
 
     #mode-section {
-        padding-bottom: 0;
+        height: 1fr;
+        min-height: 0;
     }
 
     #mode-title, #files-title, #columns-title, #logs-title {
@@ -120,39 +127,40 @@ class NdaxTuiApp(App[None]):
     }
 
     #main-bottom-bar {
-        padding: 0 1 1 1;
+        padding: 0 1 0 1;
     }
 
     #run-log {
-        height: 10;
+        height: 6;
         margin: 0;
         padding: 0 1;
         background: #0b0d10;
         border: ascii #9db8ad;
     }
 
-    Select {
-        margin: 0 1 1 1;
+    #main-shell Select {
+        margin: 0 1 0 1;
         width: 1fr;
         background: #1d2228;
         border: ascii #343a43;
         color: #e5e7eb;
     }
 
-    Input {
-        margin: 0 1 1 1;
+    #main-shell Input {
+        margin: 0 1 0 1;
         background: #1d2228;
         border: ascii #343a43;
         color: #e5e7eb;
     }
 
-    Button {
+    #main-shell Button {
         background: #2a2f36;
         color: #e5e7eb;
         border: ascii #343a43;
+        margin: 0 1 0 0;
     }
 
-    Button:hover, Button:focus {
+    #main-shell Button:hover, #main-shell Button:focus {
         border: ascii #9db8ad;
     }
 
@@ -211,6 +219,7 @@ class NdaxTuiApp(App[None]):
     #plot-file-actions, #table-file-actions {
         height: auto;
         width: auto;
+        margin-bottom: 0;
     }
 
     #plot-column-helper, #table-column-helper {
@@ -221,6 +230,12 @@ class NdaxTuiApp(App[None]):
     #plot-column-controls, #table-column-controls {
         display: none;
         margin: 0 1 0 1;
+    }
+
+    #plot-pane, #table-pane {
+        height: 1fr;
+        min-height: 0;
+        overflow-y: auto;
     }
 
     #plot-column-controls Horizontal, #table-column-controls Horizontal {
