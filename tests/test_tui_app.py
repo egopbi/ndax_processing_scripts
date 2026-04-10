@@ -5,10 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Log, Select, TabbedContent
+from textual.widgets import Log, Select, Static, TabbedContent
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.models import CompletedCommand
+from table_data_extraction.tui.screens.main_screen import MainScreen
 from table_data_extraction.tui.screens.settings_screen import SettingsScreen
 from table_data_extraction.tui.widgets.file_list import FileList
 from table_data_extraction.tui.widgets.palette_preview import PalettePreview
@@ -17,17 +18,20 @@ from table_data_extraction.tui.widgets.palette_preview import PalettePreview
 def test_app_mounts_main_screen_widgets() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(84, 40)) as pilot:
             assert app.screen.query_one("#main-top-bar")
             assert app.screen.query_one("#workflow-tabs")
             assert app.screen.query_one("#run-log", Log)
             assert app.screen.query_one("#exit-app")
             assert app.screen.query_one("#run-active")
             assert len(app.screen.query("#run-log")) == 1
-            assert app.screen.query_one("#plot-y-column", Select)
-            assert app.screen.query_one("#plot-x-column", Select)
-            assert app.screen.query_one("#table-y-column", Select)
-            assert app.screen.query_one("#table-x-column", Select)
+            assert app.screen.query_one("#plot-column-helper", Static)
+            assert app.screen.query_one("#table-column-helper", Static)
+            assert not app.screen.query_one("#plot-column-controls").display
+            assert not app.screen.query_one("#table-column-controls").display
+            assert app.screen.query_one("#current-output-dir", Static).region.height == 1
+            assert app.screen.query_one("#main-top-bar").region.height <= 4
+            assert app.screen.query_one("#workflow-tabs").region.y < 10
             await pilot.press("f8")
             await pilot.pause()
             assert isinstance(app.screen, SettingsScreen)
@@ -53,13 +57,23 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             plot_files = app.screen.query_one("#plot-files", FileList)
             plot_y = app.screen.query_one("#plot-y-column", Select)
             plot_x = app.screen.query_one("#plot-x-column", Select)
+            plot_controls = app.screen.query_one("#plot-column-controls")
+            plot_helper = app.screen.query_one("#plot-column-helper", Static)
+            table_controls = app.screen.query_one("#table-column-controls")
+            table_helper = app.screen.query_one("#table-column-helper", Static)
             assert plot_y.disabled
             assert plot_x.disabled
+            assert not plot_controls.display
+            assert plot_helper.display
+            assert not table_controls.display
+            assert table_helper.display
 
             plot_files.add_paths([Path("plot-1.ndax")])
             await pilot.pause()
             assert not plot_y.disabled
             assert not plot_x.disabled
+            assert plot_controls.display
+            assert not plot_helper.display
             assert plot_y.value == "Voltage"
             assert plot_x.value == "Time"
 
@@ -77,6 +91,8 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             table_x = app.screen.query_one("#table-x-column", Select)
             table_files.add_paths([Path("table-1.ndax"), Path("table-2.ndax")])
             await pilot.pause()
+            assert table_controls.display
+            assert not table_helper.display
             assert table_y.value == "Voltage"
             assert table_x.value == "Time"
 
@@ -84,6 +100,8 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             await pilot.pause()
             assert table_y.disabled
             assert table_x.disabled
+            assert not table_controls.display
+            assert table_helper.display
             assert table_y.value == Select.NULL
             assert table_x.value == Select.NULL
 
@@ -211,14 +229,20 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             await pilot.pause()
             assert app.screen.query_one("#settings-top-bar")
             assert isinstance(app.screen.query_one("#settings-scroll"), VerticalScroll)
+            assert app.screen.query_one("#settings-back")
             assert isinstance(
                 app.screen.query_one("#settings-palette-section"),
                 Horizontal,
             )
+            assert app.screen.query_one("#settings-scroll").region.y < 10
+            assert app.screen.query_one("#settings-form").region.y < 10
             assert app.screen.query_one("#settings-preview-panel")
             assert app.screen.query_one("#settings-plot-x")
             assert app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert app.screen.query_one("#settings-save")
             assert app.screen.query_one("#settings-cancel")
+            await pilot.click("#settings-back")
+            await pilot.pause()
+            assert isinstance(app.screen, MainScreen)
 
     asyncio.run(_run())

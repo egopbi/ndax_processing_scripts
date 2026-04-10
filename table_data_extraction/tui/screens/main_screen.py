@@ -37,6 +37,20 @@ from table_data_extraction.tui.runner import run_subprocess_command
 from table_data_extraction.tui.widgets.file_list import FileList
 
 
+def _format_compact_path(value: Path | None, *, limit: int = 42) -> str:
+    if value is None:
+        return ""
+
+    text = str(value)
+    if len(text) <= limit:
+        return text
+
+    if limit <= 3:
+        return "..."[:limit]
+
+    return f"...{text[-(limit - 3):]}"
+
+
 class MainScreen(Screen[None]):
     BINDINGS = [
         ("f5", "run_active", "Run"),
@@ -45,15 +59,15 @@ class MainScreen(Screen[None]):
     ]
 
     def compose(self):
-        with Horizontal(id="main-top-bar"):
-            with Vertical(id="main-title-block"):
+        with Vertical(id="main-top-bar"):
+            with Horizontal(id="main-top-row"):
                 yield Label("NDAX Terminal UI", id="main-title")
-                yield Static("", id="current-output-dir")
-            yield Static("", classes="spacer")
-            with Horizontal(id="main-top-actions"):
-                yield Button("Select Output Folder...", id="select-output-dir")
-                yield Button("Settings", id="open-settings")
-                yield Button("Exit", variant="error", id="exit-app")
+                yield Static("", classes="spacer")
+                with Horizontal(id="main-top-actions"):
+                    yield Button("Select Output Folder...", id="select-output-dir")
+                    yield Button("Settings", id="open-settings")
+                    yield Button("Exit", variant="error", id="exit-app")
+            yield Static("", id="current-output-dir")
         with TabbedContent(initial="plot-tab", id="workflow-tabs"):
             with TabPane("Plot", id="plot-tab"):
                 with Vertical(id="plot-pane"):
@@ -61,18 +75,29 @@ class MainScreen(Screen[None]):
                         yield Button("Add Files...", id="plot-add-files")
                         yield Button("Clear Files", id="plot-clear-files")
                     yield FileList(id="plot-files", classes="file-list")
-                    yield Select(
-                        [],
-                        prompt="Add files first",
-                        disabled=True,
-                        id="plot-y-column",
+                    yield Static(
+                        "Select NDAX files to enable column selectors.",
+                        id="plot-column-helper",
                     )
-                    yield Select(
-                        [],
-                        prompt="Add files first",
-                        disabled=True,
-                        id="plot-x-column",
-                    )
+                    with Vertical(id="plot-column-controls"):
+                        with Horizontal():
+                            yield Label("Y column", classes="column-label")
+                            yield Select(
+                                [],
+                                prompt="Choose Y column",
+                                disabled=True,
+                                id="plot-y-column",
+                                compact=True,
+                            )
+                        with Horizontal():
+                            yield Label("X column", classes="column-label")
+                            yield Select(
+                                [],
+                                prompt="Choose X column",
+                                disabled=True,
+                                id="plot-x-column",
+                                compact=True,
+                            )
                     with Collapsible(
                         title="Advanced",
                         collapsed=True,
@@ -100,18 +125,29 @@ class MainScreen(Screen[None]):
                         yield Button("Add Files...", id="table-add-files")
                         yield Button("Clear Files", id="table-clear-files")
                     yield FileList(id="table-files", classes="file-list")
-                    yield Select(
-                        [],
-                        prompt="Add files first",
-                        disabled=True,
-                        id="table-y-column",
+                    yield Static(
+                        "Select NDAX files to enable column selectors.",
+                        id="table-column-helper",
                     )
-                    yield Select(
-                        [],
-                        prompt="Add files first",
-                        disabled=True,
-                        id="table-x-column",
-                    )
+                    with Vertical(id="table-column-controls"):
+                        with Horizontal():
+                            yield Label("Y column", classes="column-label")
+                            yield Select(
+                                [],
+                                prompt="Choose Y column",
+                                disabled=True,
+                                id="table-y-column",
+                                compact=True,
+                            )
+                        with Horizontal():
+                            yield Label("X column", classes="column-label")
+                            yield Select(
+                                [],
+                                prompt="Choose X column",
+                                disabled=True,
+                                id="table-x-column",
+                                compact=True,
+                            )
                     yield Input(
                         placeholder="Anchor X values, comma separated",
                         id="table-anchor-x",
@@ -149,21 +185,40 @@ class MainScreen(Screen[None]):
             return self.query_one("#table-files", FileList)
         return self.query_one("#plot-files", FileList)
 
-    def _column_selects_for_tab(self, tab_id: str) -> tuple[Select, Select]:
+    def _column_state_widgets_for_tab(
+        self, tab_id: str
+    ) -> tuple[Static, Vertical, Select, Select]:
         if tab_id == "table-tab":
             return (
+                self.query_one("#table-column-helper", Static),
+                self.query_one("#table-column-controls", Vertical),
                 self.query_one("#table-y-column", Select),
                 self.query_one("#table-x-column", Select),
             )
         return (
+            self.query_one("#plot-column-helper", Static),
+            self.query_one("#plot-column-controls", Vertical),
             self.query_one("#plot-y-column", Select),
             self.query_one("#plot-x-column", Select),
         )
 
+    def _set_column_state(
+        self,
+        tab_id: str,
+        *,
+        helper_text: str | None,
+        show_controls: bool,
+    ) -> None:
+        helper, controls, _, _ = self._column_state_widgets_for_tab(tab_id)
+        helper.display = helper_text is not None
+        if helper_text is not None:
+            helper.update(helper_text)
+        controls.display = show_controls
+
     def refresh_state_from_app(self) -> None:
         output_dir = getattr(self.app, "current_output_dir", None)
         self.query_one("#current-output-dir", Static).update(
-            f"Output directory: {output_dir}"
+            f"Output: {_format_compact_path(output_dir)}"
         )
 
     def _log(self, message: str) -> None:
@@ -217,9 +272,41 @@ class MainScreen(Screen[None]):
             columns = self._collect_columns(paths)
         except Exception as error:
             self._log(f"Failed to load columns for {tab_id}: {error}")
-            columns = ()
+            self._set_column_state(
+                tab_id,
+                helper_text="Failed to load column names.",
+                show_controls=False,
+            )
+            return
 
-        y_select, x_select = self._column_selects_for_tab(tab_id)
+        _, controls, y_select, x_select = self._column_state_widgets_for_tab(
+            tab_id
+        )
+        if not paths:
+            self._set_column_state(
+                tab_id,
+                helper_text="Select NDAX files to enable column selectors.",
+                show_controls=False,
+            )
+            y_select.set_options([])
+            x_select.set_options([])
+            y_select.disabled = True
+            x_select.disabled = True
+            return
+
+        if not columns:
+            self._set_column_state(
+                tab_id,
+                helper_text="No common columns found in the selected files.",
+                show_controls=False,
+            )
+            y_select.set_options([])
+            x_select.set_options([])
+            y_select.disabled = True
+            x_select.disabled = True
+            return
+
+        self._set_column_state(tab_id, helper_text=None, show_controls=True)
         self._apply_select_options(y_select, columns=columns, preferred="Voltage")
         self._apply_select_options(x_select, columns=columns, preferred="Time")
 
@@ -435,6 +522,8 @@ class MainScreen(Screen[None]):
             "table-tab",
             paths,
         )
+        self._refresh_column_selects("plot-tab", plot_files.paths)
+        self._refresh_column_selects("table-tab", table_files.paths)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id

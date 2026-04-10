@@ -17,6 +17,20 @@ from table_data_extraction.tui.settings_service import (
 from table_data_extraction.tui.widgets.palette_preview import PalettePreview
 
 
+def _format_compact_path(value: Path | None, *, limit: int = 42) -> str:
+    if value is None:
+        return ""
+
+    text = str(value)
+    if len(text) <= limit:
+        return text
+
+    if limit <= 3:
+        return "..."[:limit]
+
+    return f"...{text[-(limit - 3):]}"
+
+
 class SettingsScreen(Screen[dict[str, object] | None]):
     BINDINGS = [
         ("escape", "dismiss(None)", "Back"),
@@ -34,17 +48,19 @@ class SettingsScreen(Screen[dict[str, object] | None]):
         csv_columns = ", ".join(self._current_config["csv"]["defaults"]["columns"])
         extrema = self._current_config["comparison_table"]["extrema_detection"]
 
-        with Horizontal(id="settings-top-bar"):
-            with Vertical(id="settings-title-block"):
+        with Vertical(id="settings-top-bar"):
+            with Horizontal(id="settings-top-row"):
                 yield Label("Settings", id="settings-title")
-                yield Static(
-                    f"Default output directory: {self._selected_output_dir}",
-                    id="settings-output-dir",
-                )
-            yield Static("", classes="spacer")
-            yield Button(
-                "Select Default Output Directory...",
-                id="settings-select-output-dir",
+                yield Static("", classes="spacer")
+                with Horizontal(id="settings-top-actions"):
+                    yield Button(
+                        "Select Default Output Directory...",
+                        id="settings-select-output-dir",
+                    )
+                    yield Button("Back", id="settings-back")
+            yield Static(
+                f"Default output directory: {_format_compact_path(self._selected_output_dir)}",
+                id="settings-output-dir",
             )
         with VerticalScroll(id="settings-scroll"):
             with Vertical(id="settings-form"):
@@ -123,7 +139,8 @@ class SettingsScreen(Screen[dict[str, object] | None]):
 
     def _refresh_output_label(self) -> None:
         self.query_one("#settings-output-dir", Static).update(
-            f"Default output directory: {self._selected_output_dir}"
+            "Default output directory: "
+            f"{_format_compact_path(self._selected_output_dir)}"
         )
 
     def _choose_output_directory_in_thread(self) -> None:
@@ -174,6 +191,10 @@ class SettingsScreen(Screen[dict[str, object] | None]):
 
         if event.button.id == "settings-save":
             self._save()
+            return
+
+        if event.button.id == "settings-back":
+            self.dismiss(None)
             return
 
         if event.button.id == "settings-cancel":

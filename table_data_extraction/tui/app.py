@@ -12,6 +12,20 @@ from table_data_extraction.tui.settings_service import resolve_runtime_output_di
 from table_data_extraction.tui.state import AppSessionState
 
 
+def _compact_path_text(value: str | Path | None, *, limit: int = 42) -> str:
+    if value is None:
+        return ""
+
+    text = str(value)
+    if len(text) <= limit:
+        return text
+
+    if limit <= 3:
+        return "..."[:limit]
+
+    return f"...{text[-(limit - 3):]}"
+
+
 class NdaxTuiApp(App[None]):
     CSS = """
     Screen {
@@ -22,42 +36,60 @@ class NdaxTuiApp(App[None]):
         height: auto;
     }
 
+    #main-top-bar, #settings-top-bar {
+        height: 4;
+        padding: 0 1;
+    }
+
     #settings-body, #settings-scroll {
         height: 1fr;
     }
 
     #run-log {
-        height: 12;
-        border: round $accent;
+        height: 10;
+        margin: 0 1 1 1;
+        padding: 0 1;
+        background: $panel;
     }
 
     Select {
         margin: 0 1 1 1;
         width: 1fr;
-    }
-
-    #current-output-dir, #settings-status {
-        height: auto;
-        margin: 0 1;
+        border: none;
+        background: $panel;
     }
 
     Input {
         margin: 0 1 1 1;
+        border: none;
+        background: $panel;
     }
 
-    #main-top-bar, #settings-top-bar {
-        padding: 0 1;
+    #current-output-dir, #settings-output-dir {
+        height: 1;
+        margin: 0 1;
+        width: 1fr;
+    }
+
+    #settings-status {
+        height: auto;
+        margin: 0 1;
+        width: 1fr;
     }
 
     #main-title-block, #settings-title-block {
-        width: auto;
+        width: 1fr;
+    }
+
+    #main-top-row, #settings-top-row {
+        height: auto;
     }
 
     .spacer {
         width: 1fr;
     }
 
-    #main-top-actions, #main-bottom-actions {
+    #main-top-actions, #main-bottom-actions, #settings-top-actions {
         width: auto;
         height: auto;
     }
@@ -71,7 +103,6 @@ class NdaxTuiApp(App[None]):
     }
 
     .file-list {
-        border: round $accent;
         background: $panel;
         padding: 0 1;
         margin: 0 1 1 1;
@@ -81,12 +112,31 @@ class NdaxTuiApp(App[None]):
         margin: 0 1 0 1;
     }
 
-    #settings-top-bar Button {
+    #settings-top-actions Button {
         margin-left: 1;
     }
 
     #settings-scroll {
         padding: 0 1 1 1;
+    }
+
+    #plot-column-helper, #table-column-helper {
+        margin: 0 1 1 1;
+        height: auto;
+    }
+
+    #plot-column-controls, #table-column-controls {
+        display: none;
+        margin: 0 1 1 1;
+    }
+
+    #plot-column-controls Horizontal, #table-column-controls Horizontal {
+        height: auto;
+    }
+
+    .column-label {
+        width: 12;
+        margin: 0 1 0 0;
     }
 
     #settings-palette-section {
@@ -101,7 +151,6 @@ class NdaxTuiApp(App[None]):
     #settings-preview-panel {
         width: 38;
         margin-left: 1;
-        border: round $accent;
         background: $panel;
         padding: 0 1;
     }
