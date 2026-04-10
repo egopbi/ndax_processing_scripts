@@ -42,57 +42,58 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                 id="settings-output-dir",
                 classes="path-value",
             )
-        with VerticalScroll(id="settings-scroll"):
-            with Vertical(id="settings-defaults-section", classes="section-shell"):
-                yield Label("Defaults", classes="section-title")
-                yield Input(
-                    value=self._current_config["plot"]["defaults"]["x_column"],
-                    placeholder="Plot X column",
-                    id="settings-plot-x",
-                )
-                yield Input(
-                    value=self._current_config["plot"]["defaults"]["y_column"],
-                    placeholder="Plot Y column",
-                    id="settings-plot-y",
-                )
-                yield Input(
-                    value=csv_columns,
-                    placeholder="CSV columns, comma separated",
-                    id="settings-csv-columns",
-                )
-                yield Input(
-                    value=str(extrema["window_points"]),
-                    placeholder="Window points",
-                    id="settings-window-points",
-                )
-                yield Input(
-                    value=str(extrema["zero_threshold"]),
-                    placeholder="Zero threshold",
-                    id="settings-zero-threshold",
-                )
-                yield Input(
-                    value=str(extrema["min_zone_points"]),
-                    placeholder="Minimum zone points",
-                    id="settings-min-zone-points",
-                )
-                yield Input(
-                    value=str(extrema["min_extrema_separation_points"]),
-                    placeholder="Minimum extrema separation points",
-                    id="settings-min-extrema-separation-points",
-                )
-            with Vertical(id="settings-palette-section", classes="section-shell"):
-                yield Label("Palette", id="settings-palette-label", classes="section-title")
-                with Horizontal():
+        with Vertical(id="settings-body"):
+            with VerticalScroll(id="settings-scroll"):
+                with Vertical(id="settings-defaults-section", classes="section-shell"):
+                    yield Label("Defaults", classes="section-title")
                     yield Input(
-                        value=palette_text,
-                        placeholder="Hex colors separated by spaces",
-                        id="settings-palette",
+                        value=self._current_config["plot"]["defaults"]["x_column"],
+                        placeholder="Plot X column",
+                        id="settings-plot-x",
                     )
-                    with Vertical(id="settings-preview-panel"):
-                        yield Label("Palette preview", id="settings-preview-title")
-                        yield PalettePreview(
-                            palette, id="settings-palette-preview"
+                    yield Input(
+                        value=self._current_config["plot"]["defaults"]["y_column"],
+                        placeholder="Plot Y column",
+                        id="settings-plot-y",
+                    )
+                    yield Input(
+                        value=csv_columns,
+                        placeholder="CSV columns, comma separated",
+                        id="settings-csv-columns",
+                    )
+                    yield Input(
+                        value=str(extrema["window_points"]),
+                        placeholder="Window points",
+                        id="settings-window-points",
+                    )
+                    yield Input(
+                        value=str(extrema["zero_threshold"]),
+                        placeholder="Zero threshold",
+                        id="settings-zero-threshold",
+                    )
+                    yield Input(
+                        value=str(extrema["min_zone_points"]),
+                        placeholder="Minimum zone points",
+                        id="settings-min-zone-points",
+                    )
+                    yield Input(
+                        value=str(extrema["min_extrema_separation_points"]),
+                        placeholder="Minimum extrema separation points",
+                        id="settings-min-extrema-separation-points",
+                    )
+                with Vertical(id="settings-palette-section", classes="section-shell"):
+                    yield Label("Palette", id="settings-palette-label", classes="section-title")
+                    with Horizontal():
+                        yield Input(
+                            value=palette_text,
+                            placeholder="Hex colors separated by spaces",
+                            id="settings-palette",
                         )
+                        with Vertical(id="settings-preview-panel"):
+                            yield Label("Palette preview", id="settings-preview-title")
+                            yield PalettePreview(
+                                palette, id="settings-palette-preview"
+                            )
             with Horizontal(id="settings-actions"):
                 yield Button("Save", variant="success", id="settings-save")
                 yield Button("Back", variant="default", id="settings-back")

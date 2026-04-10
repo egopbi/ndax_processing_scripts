@@ -265,7 +265,7 @@ def test_exit_waits_for_command_cleanup_during_start_boundary(monkeypatch, launc
 def test_settings_screen_shows_palette_preview_and_inputs() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
-        async with app.run_test(size=(80, 16)) as pilot:
+        async with app.run_test(size=(84, 40)) as pilot:
             app.push_screen(SettingsScreen())
             await pilot.pause()
             assert app.screen.query_one("#settings-top-bar")
@@ -281,7 +281,22 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             assert app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert app.screen.query_one("#settings-save")
             assert app.screen.query_one("#settings-back")
-            assert len(app.screen.query("#settings-select-output-dir")) == 0
+            assert app.screen.query_one("#settings-actions")
+            assert (
+                app.screen.query_one("#settings-actions").region.y
+                + app.screen.query_one("#settings-actions").region.height
+                <= 40
+            )
+            assert (
+                app.screen.query_one("#settings-save").region.y
+                + app.screen.query_one("#settings-save").region.height
+                <= 40
+            )
+            assert (
+                app.screen.query_one("#settings-back").region.y
+                + app.screen.query_one("#settings-back").region.height
+                <= 40
+            )
             assert (
                 app.screen.query_one("#settings-output-dir", Static).content
                 == str(app.current_output_dir)

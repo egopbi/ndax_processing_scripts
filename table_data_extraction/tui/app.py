@@ -184,16 +184,10 @@ class NdaxTuiApp(App[None]):
         border: ascii #7ecb8f;
     }
 
-    #settings-status {
-        height: auto;
-        margin: 0 1;
-        width: 1fr;
-    }
-
     #settings-scroll {
         height: 1fr;
         min-height: 0;
-        padding: 0 1 1 1;
+        padding: 0 1 0 1;
         scrollbar-background: #0f1216;
         scrollbar-background-hover: #0f1216;
         scrollbar-background-active: #0f1216;
@@ -203,8 +197,9 @@ class NdaxTuiApp(App[None]):
         scrollbar-gutter: stable;
     }
 
-    #settings-body, #settings-scroll {
+    #settings-body {
         height: 1fr;
+        min-height: 0;
     }
 
     #settings-palette-section {
@@ -237,6 +232,18 @@ class NdaxTuiApp(App[None]):
         background: white;
         color: black;
         height: auto;
+    }
+
+    #settings-actions {
+        height: auto;
+        padding: 0 1 0 1;
+        margin: 0;
+    }
+
+    #settings-status {
+        height: auto;
+        margin: 0 1 0 1;
+        width: 1fr;
     }
 
     #plot-file-actions, #table-file-actions {
