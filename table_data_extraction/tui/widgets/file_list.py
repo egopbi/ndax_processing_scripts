@@ -20,11 +20,13 @@ class FileList(Vertical):
         self,
         paths: Sequence[Path] = (),
         *,
+        allow_remove_buttons: bool = True,
         id: str | None = None,
         classes: str | None = None,
     ) -> None:
         super().__init__(id=id, classes=classes)
         self.paths: tuple[Path, ...] = ()
+        self.allow_remove_buttons = allow_remove_buttons
         self._pending_refresh = False
         self.paths_changed_callback: Callable[[tuple[Path, ...]], None] | None = None
         self.set_paths(paths)
@@ -82,8 +84,9 @@ class FileList(Vertical):
 
         self._pending_refresh = False
         self.remove_children()
-        if not self.paths:
-            self.mount(Static(self._render_text(), classes="file-list-empty"))
+        if not self.paths or not self.allow_remove_buttons:
+            static_class = "file-list-empty" if not self.paths else "file-list-static"
+            self.mount(Static(self._render_text(), classes=static_class))
             return
 
         for index, path in enumerate(self.paths):

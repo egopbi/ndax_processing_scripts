@@ -4,18 +4,15 @@ from pathlib import Path
 import re
 import threading
 
-from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import (
     Button,
-    Collapsible,
+    ContentSwitcher,
     Input,
     Label,
-    Log,
     Select,
     Static,
-    TabbedContent,
-    TabPane,
 )
 
 from table_data_extraction.reader import list_columns
@@ -35,6 +32,12 @@ from table_data_extraction.tui.models import (
     TableRunConfig,
 )
 from table_data_extraction.tui.runner import run_subprocess_command
+from table_data_extraction.tui.screens.advanced_options_screen import (
+    AdvancedOptionsResult,
+    AdvancedOptionsScreen,
+    AdvancedOptionsState,
+)
+from table_data_extraction.tui.screens.manage_files_screen import ManageFilesScreen
 from table_data_extraction.tui.widgets.file_list import FileList
 
 
@@ -47,7 +50,10 @@ class MainScreen(Screen[None]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._syncing_shared_files = False
+        self._advanced_state = {
+            "plot": AdvancedOptionsState(mode="plot"),
+            "table": AdvancedOptionsState(mode="table"),
+        }
 
     def compose(self):
         with Vertical(id="main-shell"):
@@ -57,151 +63,155 @@ class MainScreen(Screen[None]):
                     yield Label("by eeee_gorka", id="main-subtitle")
                 yield Static("", classes="spacer")
                 with Horizontal(id="main-top-actions", classes="top-actions"):
-                    yield Button("Settings", id="open-settings", classes="top-action-button")
+                    yield Button(
+                        "Settings",
+                        id="open-settings",
+                        classes="top-action-button",
+                    )
                     yield Button("Exit", id="exit-app", classes="top-action-button")
-            with Grid(id="main-body"):
-                with Vertical(id="output-folder-section", classes="section-shell"):
-                    yield Label("Output folder", classes="section-title")
-                    with Horizontal(id="output-folder-row"):
-                        yield Button("Select output folder", id="select-output-dir")
-                        yield Static("", id="current-output-dir", classes="path-value")
-                with Vertical(id="mode-section", classes="section-shell"):
-                    yield Label("Mode", id="mode-title", classes="section-title")
-                    with TabbedContent(initial="plot-tab", id="workflow-tabs"):
-                        with TabPane("Plot", id="plot-tab"):
-                            with VerticalScroll(id="plot-pane"):
-                                with Vertical(id="plot-files-section"):
-                                    yield Label("Files", classes="section-title")
-                                    with Horizontal(id="plot-file-actions"):
-                                        yield Button("Add Files", id="plot-add-files")
-                                        yield Button("Clear Files", id="plot-clear-files")
-                                    yield FileList(id="plot-files", classes="file-list")
-                                with Vertical(id="plot-columns-section"):
-                                    yield Label("Columns", classes="section-title")
-                                    yield Static(
-                                        "Select NDAX files to enable column selectors.",
-                                        id="plot-column-helper",
-                                        classes="attention-box",
+            with Vertical(id="main-body"):
+                with VerticalScroll(id="main-scroll"):
+                    with Vertical(id="output-folder-section", classes="section-shell"):
+                        yield Label("Output folder", classes="section-title")
+                        with Vertical(id="output-folder-row"):
+                            yield Button(
+                                "Select output folder",
+                                id="select-output-dir",
+                            )
+                            yield Static(
+                                "",
+                                id="current-output-dir",
+                                classes="path-value",
+                            )
+                    with Vertical(id="files-section", classes="section-shell"):
+                        yield Label("Files", classes="section-title")
+                        with Horizontal(id="shared-file-actions"):
+                            yield Button("Add Files", id="shared-add-files")
+                            yield Button("Remove...", id="shared-manage-files")
+                            yield Button("Clear Files", id="shared-clear-files")
+                        yield FileList(
+                            id="shared-files",
+                            classes="file-list",
+                            allow_remove_buttons=False,
+                        )
+                    with Vertical(id="mode-section", classes="section-shell"):
+                        yield Label("Mode", id="mode-title", classes="section-title")
+                        yield Select(
+                            [
+                                ("Plot", "plot"),
+                                ("Comparison Table", "table"),
+                            ],
+                            value="plot",
+                            allow_blank=False,
+                            id="mode-select",
+                        )
+                    with Vertical(
+                        id="parameters-section",
+                        classes="section-shell",
+                    ):
+                        yield Label("Parameters", classes="section-title")
+                        with ContentSwitcher(initial="plot-form", id="mode-forms"):
+                            with Vertical(id="plot-form", classes="mode-form"):
+                                yield Static(
+                                    "Select NDAX files to enable column selectors.",
+                                    id="plot-column-helper",
+                                    classes="attention-box",
+                                )
+                                with Vertical(id="plot-column-controls"):
+                                    with Horizontal(classes="field-grid-row"):
+                                        yield Label(
+                                            "Y column",
+                                            classes="column-label",
+                                        )
+                                        yield Select(
+                                            [],
+                                            prompt="Choose Y column",
+                                            disabled=True,
+                                            id="plot-y-column",
+                                            compact=True,
+                                        )
+                                    with Horizontal(classes="field-grid-row"):
+                                        yield Label(
+                                            "X column",
+                                            classes="column-label",
+                                        )
+                                        yield Select(
+                                            [],
+                                            prompt="Choose X column",
+                                            disabled=True,
+                                            id="plot-x-column",
+                                            compact=True,
+                                        )
+                                with Horizontal(classes="inline-input-row"):
+                                    yield Input(placeholder="X min", id="plot-x-min")
+                                    yield Input(placeholder="X max", id="plot-x-max")
+                                with Horizontal(classes="inline-input-row"):
+                                    yield Input(placeholder="Y min", id="plot-y-min")
+                                    yield Input(placeholder="Y max", id="plot-y-max")
+                                with Horizontal(classes="secondary-actions"):
+                                    yield Button(
+                                        "More Options...",
+                                        id="plot-more-options",
                                     )
-                                    with Vertical(id="plot-column-controls"):
-                                        with Horizontal():
-                                            yield Label("Y column", classes="column-label")
-                                            yield Select(
-                                                [],
-                                                prompt="Choose Y column",
-                                                disabled=True,
-                                                id="plot-y-column",
-                                                compact=True,
-                                            )
-                                        with Horizontal():
-                                            yield Label("X column", classes="column-label")
-                                            yield Select(
-                                                [],
-                                                prompt="Choose X column",
-                                                disabled=True,
-                                                id="plot-x-column",
-                                                compact=True,
-                                            )
-                                    with Horizontal(classes="inline-input-row"):
-                                        yield Input(placeholder="X min", id="plot-x-min")
-                                        yield Input(placeholder="X max", id="plot-x-max")
-                                    with Horizontal(classes="inline-input-row"):
-                                        yield Input(placeholder="Y min", id="plot-y-min")
-                                        yield Input(placeholder="Y max", id="plot-y-max")
-                                    with Collapsible(
-                                        title="Advanced",
-                                        collapsed=True,
-                                        collapsed_symbol=">",
-                                        expanded_symbol="v",
-                                        id="plot-advanced",
-                                    ):
-                                        yield Input(placeholder="Labels, comma separated", id="plot-labels")
-                                        yield Input(
-                                            placeholder="Output filename override",
-                                            id="plot-output",
+                            with Vertical(id="table-form", classes="mode-form"):
+                                yield Static(
+                                    "Select NDAX files to enable column selectors.",
+                                    id="table-column-helper",
+                                    classes="attention-box",
+                                )
+                                with Vertical(id="table-column-controls"):
+                                    with Horizontal(classes="field-grid-row"):
+                                        yield Label(
+                                            "Y column",
+                                            classes="column-label",
                                         )
-                                        yield Button(
-                                            "Run Health Check",
-                                            variant="default",
-                                            id="plot-health-check",
+                                        yield Select(
+                                            [],
+                                            prompt="Choose Y column",
+                                            disabled=True,
+                                            id="table-y-column",
+                                            compact=True,
                                         )
-                        with TabPane("Comparison Table", id="table-tab"):
-                            with VerticalScroll(id="table-pane"):
-                                with Vertical(id="table-files-section"):
-                                    yield Label("Files", classes="section-title")
-                                    with Horizontal(id="table-file-actions"):
-                                        yield Button("Add Files", id="table-add-files")
-                                        yield Button("Clear Files", id="table-clear-files")
-                                    yield FileList(id="table-files", classes="file-list")
-                                with Vertical(id="table-columns-section"):
-                                    yield Label("Columns", classes="section-title")
-                                    yield Static(
-                                        "Select NDAX files to enable column selectors.",
-                                        id="table-column-helper",
-                                        classes="attention-box",
+                                    with Horizontal(classes="field-grid-row"):
+                                        yield Label(
+                                            "X column",
+                                            classes="column-label",
+                                        )
+                                        yield Select(
+                                            [],
+                                            prompt="Choose X column",
+                                            disabled=True,
+                                            id="table-x-column",
+                                            compact=True,
+                                        )
+                                yield Input(
+                                    placeholder="Anchor X values, space or comma separated",
+                                    id="table-anchor-x",
+                                )
+                                with Horizontal(classes="secondary-actions"):
+                                    yield Button(
+                                        "More Options...",
+                                        id="table-more-options",
                                     )
-                                    with Vertical(id="table-column-controls"):
-                                        with Horizontal():
-                                            yield Label("Y column", classes="column-label")
-                                            yield Select(
-                                                [],
-                                                prompt="Choose Y column",
-                                                disabled=True,
-                                                id="table-y-column",
-                                                compact=True,
-                                            )
-                                        with Horizontal():
-                                            yield Label("X column", classes="column-label")
-                                            yield Select(
-                                                [],
-                                                prompt="Choose X column",
-                                                disabled=True,
-                                                id="table-x-column",
-                                                compact=True,
-                                            )
-                                    yield Input(
-                                        placeholder="Anchor X values, space or comma separated",
-                                        id="table-anchor-x",
-                                    )
-                                    with Collapsible(
-                                        title="Advanced",
-                                        collapsed=True,
-                                        collapsed_symbol=">",
-                                        expanded_symbol="v",
-                                        id="table-advanced",
-                                    ):
-                                        yield Input(placeholder="Labels, comma separated", id="table-labels")
-                                        yield Input(
-                                            placeholder="Output filename override",
-                                            id="table-output",
-                                        )
-                                        yield Button(
-                                            "Run Health Check",
-                                            variant="default",
-                                            id="table-health-check",
-                                        )
-                with Vertical(id="logs-section", classes="section-shell"):
-                    yield Label("Logs", id="logs-title", classes="section-title")
-                    yield Log(id="run-log")
-                with Horizontal(id="main-bottom-bar"):
-                    yield Static("", classes="spacer")
-                    with Horizontal(id="main-bottom-actions"):
-                        yield Button("Run", variant="success", id="run-active")
+            with Horizontal(id="main-bottom-bar", classes="surface-box"):
+                yield Static("Ready", id="run-status")
+                yield Static("", classes="spacer")
+                with Horizontal(id="main-bottom-actions"):
+                    yield Button("Run", variant="success", id="run-active")
 
     @property
-    def current_tab(self) -> str:
-        return self.query_one("#workflow-tabs", TabbedContent).active
+    def current_mode(self) -> str:
+        value = self.query_one("#mode-select", Select).value
+        return "table" if value == "table" else "plot"
 
     @property
     def active_file_list(self) -> FileList:
-        if self.current_tab == "table-tab":
-            return self.query_one("#table-files", FileList)
-        return self.query_one("#plot-files", FileList)
+        return self.query_one("#shared-files", FileList)
 
-    def _column_state_widgets_for_tab(
-        self, tab_id: str
+    def _column_state_widgets_for_mode(
+        self, mode: str
     ) -> tuple[Static, Vertical, Select, Select]:
-        if tab_id == "table-tab":
+        if mode == "table":
             return (
                 self.query_one("#table-column-helper", Static),
                 self.query_one("#table-column-controls", Vertical),
@@ -217,12 +227,12 @@ class MainScreen(Screen[None]):
 
     def _set_column_state(
         self,
-        tab_id: str,
+        mode: str,
         *,
         helper_text: str | None,
         show_controls: bool,
     ) -> None:
-        helper, controls, _, _ = self._column_state_widgets_for_tab(tab_id)
+        helper, controls, _, _ = self._column_state_widgets_for_mode(mode)
         helper.display = helper_text is not None
         if helper_text is not None:
             helper.update(helper_text)
@@ -235,7 +245,7 @@ class MainScreen(Screen[None]):
         )
 
     def _log(self, message: str) -> None:
-        self.query_one("#run-log", Log).write_line(message)
+        self.query_one("#run-status", Static).update(message)
 
     def _selected_select_value(self, select: Select, field_name: str) -> str:
         value = select.value
@@ -280,24 +290,22 @@ class MainScreen(Screen[None]):
             return
         select.value = preferred if preferred in columns else columns[0]
 
-    def _refresh_column_selects(self, tab_id: str, paths: tuple[Path, ...]) -> None:
+    def _refresh_column_selects(self, mode: str, paths: tuple[Path, ...]) -> None:
         try:
             columns = self._collect_columns(paths)
         except Exception as error:
-            self._log(f"Failed to load columns for {tab_id}: {error}")
+            self._log(f"Failed to load columns for {mode}: {error}")
             self._set_column_state(
-                tab_id,
+                mode,
                 helper_text="Failed to load column names.",
                 show_controls=False,
             )
             return
 
-        _, controls, y_select, x_select = self._column_state_widgets_for_tab(
-            tab_id
-        )
+        _, controls, y_select, x_select = self._column_state_widgets_for_mode(mode)
         if not paths:
             self._set_column_state(
-                tab_id,
+                mode,
                 helper_text="Select NDAX files to enable column selectors.",
                 show_controls=False,
             )
@@ -309,7 +317,7 @@ class MainScreen(Screen[None]):
 
         if not columns:
             self._set_column_state(
-                tab_id,
+                mode,
                 helper_text="No common columns found in the selected files.",
                 show_controls=False,
             )
@@ -319,9 +327,10 @@ class MainScreen(Screen[None]):
             x_select.disabled = True
             return
 
-        self._set_column_state(tab_id, helper_text=None, show_controls=True)
+        self._set_column_state(mode, helper_text=None, show_controls=True)
         self._apply_select_options(y_select, columns=columns, preferred="Voltage")
         self._apply_select_options(x_select, columns=columns, preferred="Time")
+        controls.display = True
 
     def _parse_labels(self, value: str) -> tuple[str, ...] | None:
         labels = tuple(item.strip() for item in value.split(",") if item.strip())
@@ -347,7 +356,9 @@ class MainScreen(Screen[None]):
         return resolved
 
     def _parse_anchor_x(self, value: str) -> tuple[float, ...]:
-        anchors = tuple(float(item) for item in re.split(r"[,\s]+", value.strip()) if item)
+        anchors = tuple(
+            float(item) for item in re.split(r"[,\s]+", value.strip()) if item
+        )
         if not anchors:
             raise ValueError("Anchor X must contain at least one value.")
         return anchors
@@ -358,10 +369,13 @@ class MainScreen(Screen[None]):
         return self.active_file_list.paths[0]
 
     def _build_active_command(self):
-        if self.current_tab == "table-tab":
+        mode = self.current_mode
+        files = self.active_file_list.paths
+        if mode == "table":
+            advanced = self._advanced_state["table"]
             return build_table_command(
                 TableRunConfig(
-                    files=self.query_one("#table-files", FileList).paths,
+                    files=files,
                     y_column=self._selected_select_value(
                         self.query_one("#table-y-column", Select),
                         "Y",
@@ -373,19 +387,18 @@ class MainScreen(Screen[None]):
                         self.query_one("#table-x-column", Select),
                         "X",
                     ),
-                    labels=self._parse_labels(
-                        self.query_one("#table-labels", Input).value
-                    ),
+                    labels=self._parse_labels(advanced.labels),
                     output_path=self._resolve_output_override(
-                        self.query_one("#table-output", Input).value
+                        advanced.output_override
                     ),
                 ),
                 output_dir=self.app.current_output_dir,
             )
 
+        advanced = self._advanced_state["plot"]
         return build_plot_command(
             PlotRunConfig(
-                files=self.query_one("#plot-files", FileList).paths,
+                files=files,
                 y_column=self._selected_select_value(
                     self.query_one("#plot-y-column", Select),
                     "Y",
@@ -394,9 +407,7 @@ class MainScreen(Screen[None]):
                     self.query_one("#plot-x-column", Select),
                     "X",
                 ),
-                labels=self._parse_labels(
-                    self.query_one("#plot-labels", Input).value
-                ),
+                labels=self._parse_labels(advanced.labels),
                 x_min=self._parse_optional_float(
                     self.query_one("#plot-x-min", Input).value
                 ),
@@ -410,7 +421,7 @@ class MainScreen(Screen[None]):
                     self.query_one("#plot-y-max", Input).value
                 ),
                 output_path=self._resolve_output_override(
-                    self.query_one("#plot-output", Input).value,
+                    advanced.output_override,
                     enforced_suffix=".jpg",
                 ),
             ),
@@ -436,10 +447,9 @@ class MainScreen(Screen[None]):
         )
 
         def _capture_output(chunk: StreamChunk) -> None:
-            self.app.call_from_thread(
-                self._log,
-                f"[{chunk.stream}] {chunk.text.rstrip()}",
-            )
+            text = chunk.text.rstrip()
+            if text:
+                self.app.call_from_thread(self._log, f"[{chunk.stream}] {text}")
 
         result = run_subprocess_command(
             command,
@@ -478,54 +488,18 @@ class MainScreen(Screen[None]):
             self.app._pending_exit = False
             self.app.exit()
 
-    def _apply_selected_files(
-        self,
-        tab_id: str,
-        selected: tuple[Path, ...],
-    ) -> None:
-        if tab_id == "table-tab":
-            self.query_one("#table-files", FileList).add_paths(selected)
-        else:
-            self.query_one("#plot-files", FileList).add_paths(selected)
+    def _apply_selected_files(self, selected: tuple[Path, ...]) -> None:
+        self.active_file_list.add_paths(selected)
 
-    def _on_file_list_paths_changed(
-        self,
-        source_tab: str,
-        paths: tuple[Path, ...],
-    ) -> None:
-        if self._syncing_shared_files:
-            return
-        self._sync_shared_file_lists(paths, source_tab=source_tab)
+    def _on_file_list_paths_changed(self, paths: tuple[Path, ...]) -> None:
+        self._refresh_column_selects("plot", paths)
+        self._refresh_column_selects("table", paths)
 
-    def _sync_shared_file_lists(
-        self,
-        paths: tuple[Path, ...],
-        *,
-        source_tab: str | None = None,
-    ) -> None:
-        self._syncing_shared_files = True
-        try:
-            for tab_id, widget_id in (
-                ("plot-tab", "#plot-files"),
-                ("table-tab", "#table-files"),
-            ):
-                if source_tab is not None and tab_id == source_tab:
-                    continue
-                file_list = self.query_one(widget_id, FileList)
-                if file_list.paths != paths:
-                    file_list.set_paths(paths)
-        finally:
-            self._syncing_shared_files = False
-
-        self._refresh_column_selects("plot-tab", paths)
-        self._refresh_column_selects("table-tab", paths)
-
-    def _choose_files_in_thread(self, tab_id: str) -> None:
+    def _choose_files_in_thread(self) -> None:
         selected = choose_ndax_files(initial_dir=self.app.current_output_dir)
         if selected:
             self.app.call_from_thread(
                 self._apply_selected_files,
-                tab_id,
                 tuple(selected),
             )
 
@@ -534,6 +508,40 @@ class MainScreen(Screen[None]):
         if selected is not None:
             self.app.call_from_thread(self.app.set_output_dir, selected)
             self.app.call_from_thread(self.refresh_state_from_app)
+
+    def _manage_files_closed(self, result: tuple[Path, ...] | None) -> None:
+        if result is None:
+            return
+        self.active_file_list.set_paths(result)
+
+    def _advanced_options_closed(
+        self,
+        result: AdvancedOptionsResult | None,
+    ) -> None:
+        if result is None:
+            return
+
+        self._advanced_state[result.state.mode] = result.state
+        if result.action == "health-check":
+            self._run_health_check()
+            return
+        self._log("Advanced options updated.")
+
+    def _open_advanced_options(self) -> None:
+        mode = self.current_mode
+        state = self._advanced_state[mode]
+        self.app.push_screen(
+            AdvancedOptionsScreen(
+                mode=mode,
+                labels=state.labels,
+                output_override=state.output_override,
+            ),
+            self._advanced_options_closed,
+        )
+
+    def _sync_mode_form(self) -> None:
+        form_id = "table-form" if self.current_mode == "table" else "plot-form"
+        self.query_one("#mode-forms", ContentSwitcher).current = form_id
 
     def action_open_settings(self) -> None:
         self.app.action_open_settings()
@@ -566,55 +574,47 @@ class MainScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self.refresh_state_from_app()
-        plot_files = self.query_one("#plot-files", FileList)
-        table_files = self.query_one("#table-files", FileList)
-        plot_files.paths_changed_callback = lambda paths: self._on_file_list_paths_changed(
-            "plot-tab", paths
-        )
-        table_files.paths_changed_callback = (
-            lambda paths: self._on_file_list_paths_changed("table-tab", paths)
-        )
-        initial_paths = plot_files.paths if plot_files.paths else table_files.paths
-        self._sync_shared_file_lists(initial_paths)
+        file_list = self.query_one("#shared-files", FileList)
+        file_list.paths_changed_callback = self._on_file_list_paths_changed
+        self._on_file_list_paths_changed(file_list.paths)
+        self._sync_mode_form()
 
-    def _handle_file_remove_button(self, button_id: str | None) -> bool:
-        if button_id is None or "-remove-" not in button_id:
-            return False
-
-        widget_id, _, index_text = button_id.rpartition("-remove-")
-        if not widget_id or not index_text.isdigit():
-            return False
-
-        try:
-            file_list = self.query_one(f"#{widget_id}", FileList)
-        except Exception:
-            return False
-
-        file_list.remove_path_at(int(index_text))
-        return True
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "mode-select":
+            self._sync_mode_form()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
-        if self._handle_file_remove_button(button_id):
-            event.stop()
-            return
-        if button_id in {"plot-add-files", "table-add-files"}:
-            tab_id = "plot-tab" if button_id == "plot-add-files" else "table-tab"
+        if button_id == "shared-add-files":
             threading.Thread(
                 target=self._choose_files_in_thread,
-                args=(tab_id,),
                 daemon=True,
             ).start()
+            return
+        if button_id == "shared-manage-files":
+            self.app.push_screen(
+                ManageFilesScreen(self.active_file_list.paths),
+                self._manage_files_closed,
+            )
+            return
+        if button_id == "shared-clear-files":
+            self.active_file_list.clear_paths()
+            return
+        if button_id == "plot-more-options":
+            self.query_one("#mode-select", Select).value = "plot"
+            self._sync_mode_form()
+            self._open_advanced_options()
+            return
+        if button_id == "table-more-options":
+            self.query_one("#mode-select", Select).value = "table"
+            self._sync_mode_form()
+            self._open_advanced_options()
             return
         if button_id == "select-output-dir":
             threading.Thread(
                 target=self._choose_output_directory_in_thread,
                 daemon=True,
             ).start()
-            return
-        if button_id in {"plot-clear-files", "table-clear-files"}:
-            file_list_id = "#plot-files" if button_id == "plot-clear-files" else "#table-files"
-            self.query_one(file_list_id, FileList).clear_paths()
             return
         if button_id == "run-active":
             self._start_run()
@@ -624,6 +624,3 @@ class MainScreen(Screen[None]):
             return
         if button_id == "exit-app":
             self.app.action_exit_app()
-            return
-        if button_id in {"plot-health-check", "table-health-check"}:
-            self._run_health_check()

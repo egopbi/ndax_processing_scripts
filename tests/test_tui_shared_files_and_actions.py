@@ -1,37 +1,41 @@
 import asyncio
 from pathlib import Path
 
-from textual.widgets import Button
+from textual.widgets import Button, Select
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.widgets.file_list import FileList
 
 
-def test_files_are_shared_between_plot_and_table_modes() -> None:
+def test_shared_files_persist_across_mode_switches() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(96, 36)) as pilot:
-            plot_files = app.screen.query_one("#plot-files", FileList)
-            table_files = app.screen.query_one("#table-files", FileList)
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            mode_select = app.screen.query_one("#mode-select", Select)
 
-            plot_files.add_paths([Path("plot-a.ndax"), Path("plot-b.ndax")])
+            shared_files.add_paths([Path("plot-a.ndax"), Path("plot-b.ndax")])
             await pilot.pause()
-            assert table_files.paths == (
+            assert shared_files.paths == (
                 Path("plot-a.ndax"),
                 Path("plot-b.ndax"),
             )
 
-            table_files.add_paths([Path("table-c.ndax")])
+            mode_select.value = "table"
             await pilot.pause()
-            assert plot_files.paths == (
+            assert app.screen.current_mode == "table"
+            assert shared_files.paths == (
                 Path("plot-a.ndax"),
                 Path("plot-b.ndax"),
-                Path("table-c.ndax"),
             )
 
-            table_files.clear_paths()
+            mode_select.value = "plot"
             await pilot.pause()
-            assert plot_files.paths == ()
+            assert app.screen.current_mode == "plot"
+            assert shared_files.paths == (
+                Path("plot-a.ndax"),
+                Path("plot-b.ndax"),
+            )
 
     asyncio.run(_run())
 
@@ -66,36 +70,31 @@ def test_settings_top_actions_include_exit_and_match_main_structure() -> None:
     asyncio.run(_run())
 
 
-def test_file_action_buttons_keep_files_shared(monkeypatch) -> None:
+def test_file_action_buttons_update_shared_files(monkeypatch) -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
 
         async with app.run_test(size=(96, 36)) as pilot:
-            def _fake_choose_files(tab_id: str) -> None:
+            def _fake_choose_files() -> None:
                 app.call_from_thread(
                     app.screen._apply_selected_files,
-                    tab_id,
                     (Path("button-a.ndax"), Path("button-b.ndax")),
                 )
 
             monkeypatch.setattr(app.screen, "_choose_files_in_thread", _fake_choose_files)
 
-            await pilot.click("#plot-add-files")
+            await pilot.click("#shared-add-files")
             await pilot.pause()
 
-            plot_files = app.screen.query_one("#plot-files", FileList)
-            table_files = app.screen.query_one("#table-files", FileList)
-            assert plot_files.paths == (
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            assert shared_files.paths == (
                 Path("button-a.ndax"),
                 Path("button-b.ndax"),
             )
-            assert table_files.paths == plot_files.paths
 
-            clear_button = app.screen.query_one("#table-clear-files", Button)
-            app.screen.on_button_pressed(Button.Pressed(clear_button))
+            await pilot.click("#shared-clear-files")
             await pilot.pause()
-            assert plot_files.paths == ()
-            assert table_files.paths == ()
+            assert shared_files.paths == ()
 
     asyncio.run(_run())
 

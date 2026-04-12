@@ -1,6 +1,8 @@
 import asyncio
 from pathlib import Path
 
+import pytest
+from textual.css.query import NoMatches
 from textual.widgets import Static
 
 from table_data_extraction.tui.app import NdaxTuiApp
@@ -9,10 +11,6 @@ from table_data_extraction.tui.widgets.palette_preview import PalettePreview
 
 
 PROJECT_BLUE_RGB = (109, 183, 255)
-
-
-def _collapsible_contents(widget) -> object:
-    return list(widget.children)[1]
 
 
 def test_top_bar_branding_and_buttons_are_not_clipped() -> None:
@@ -56,7 +54,7 @@ def test_top_bar_branding_and_buttons_are_not_clipped() -> None:
     asyncio.run(_run())
 
 
-def test_output_row_path_is_vertically_centered_to_button() -> None:
+def test_output_row_stacks_button_and_path_cleanly() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(100, 34)) as pilot:
@@ -65,64 +63,43 @@ def test_output_row_path_is_vertically_centered_to_button() -> None:
             select_button = app.screen.query_one("#select-output-dir")
             output_path = app.screen.query_one("#current-output-dir")
 
-            button_center = select_button.region.y + (select_button.region.height / 2)
-            path_center = output_path.region.y + (output_path.region.height / 2)
-            assert abs(button_center - path_center) <= 0.5
+            assert output_path.region.y > select_button.region.y
+            assert output_path.region.x == select_button.region.x
 
     asyncio.run(_run())
 
 
-def test_advanced_sections_do_not_have_nested_scrollbars() -> None:
+def test_more_options_replace_nested_advanced_sections() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(90, 30)) as pilot:
             await pilot.pause()
 
-            plot_advanced_contents = _collapsible_contents(
+            with pytest.raises(NoMatches):
                 app.screen.query_one("#plot-advanced")
-            )
-            table_advanced_contents = _collapsible_contents(
+            with pytest.raises(NoMatches):
                 app.screen.query_one("#table-advanced")
-            )
 
-            for widget in (plot_advanced_contents, table_advanced_contents):
-                assert widget.styles.overflow_y != "auto"
-                assert widget.styles.max_height is None
+            assert app.screen.query_one("#plot-more-options")
+            assert app.screen.query_one("#table-more-options")
 
     asyncio.run(_run())
 
 
-def test_file_remove_buttons_keep_safe_gap_from_scrollbar() -> None:
+def test_main_file_list_uses_modal_removal_flow() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(84, 30)) as pilot:
             await pilot.pause()
 
-            plot_files = app.screen.query_one("#plot-files", FileList)
-            plot_files.add_paths([Path(f"C:/tmp/plot_{i}.ndax") for i in range(12)])
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            shared_files.add_paths([Path(f"C:/tmp/shared_{i}.ndax") for i in range(3)])
             await pilot.pause()
 
-            plot_pane = app.screen.query_one("#plot-pane")
-            plot_remove = app.screen.query_one("#plot-files-remove-0")
-            plot_gap = (plot_pane.region.x + plot_pane.region.width) - (
-                plot_remove.region.x + plot_remove.region.width
-            )
-            assert plot_gap >= 4
-
-            tabs = app.screen.query_one("#workflow-tabs")
-            tabs.active = "table-tab"
+            assert len(app.screen.query("#shared-files-remove-0")) == 0
+            await pilot.click("#shared-manage-files")
             await pilot.pause()
-
-            table_files = app.screen.query_one("#table-files", FileList)
-            table_files.add_paths([Path(f"C:/tmp/table_{i}.ndax") for i in range(12)])
-            await pilot.pause()
-
-            table_pane = app.screen.query_one("#table-pane")
-            table_remove = app.screen.query_one("#table-files-remove-0")
-            table_gap = (table_pane.region.x + table_pane.region.width) - (
-                table_remove.region.x + table_remove.region.width
-            )
-            assert table_gap >= 4
+            assert app.screen.query_one("#manage-files-dialog")
 
     asyncio.run(_run())
 

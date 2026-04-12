@@ -337,6 +337,78 @@ class NdaxTuiApp(App[None]):
     #settings-actions Button {
         min-width: 10;
     }
+
+    #main-body {
+        layout: vertical;
+        height: 1fr;
+        min-height: 0;
+    }
+
+    #main-scroll {
+        height: 1fr;
+        min-height: 0;
+        padding: 0;
+        scrollbar-background: #0f1216;
+        scrollbar-background-hover: #0f1216;
+        scrollbar-background-active: #0f1216;
+        scrollbar-color: #6db7ff;
+        scrollbar-color-hover: #8cc8ff;
+        scrollbar-color-active: #6db7ff;
+    }
+
+    #files-section, #parameters-section {
+        width: 1fr;
+        height: auto;
+    }
+
+    #mode-section {
+        height: auto;
+        min-height: 0;
+    }
+
+    #output-folder-row {
+        height: auto;
+        align: left top;
+    }
+
+    #shared-file-actions, .secondary-actions, .field-grid-row {
+        width: 1fr;
+        height: auto;
+    }
+
+    #mode-select {
+        width: 1fr;
+    }
+
+    #mode-forms, .mode-form {
+        width: 1fr;
+        height: auto;
+    }
+
+    #parameters-section .attention-box {
+        margin-bottom: 1;
+    }
+
+    #run-status {
+        width: 1fr;
+        min-width: 0;
+        color: #b5bcc7;
+        content-align: left middle;
+        padding: 0 1 0 0;
+        overflow-x: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #main-bottom-bar {
+        height: auto;
+        margin-top: 1;
+        padding: 0 1;
+        align: left middle;
+    }
+
+    .file-list-static, .file-list-empty {
+        width: 1fr;
+    }
     """
 
     AUTO_FOCUS = ""

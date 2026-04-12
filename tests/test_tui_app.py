@@ -4,8 +4,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Input, Log, Select, Static, TabbedContent
+from textual.containers import VerticalScroll
+from textual.css.query import NoMatches
+from textual.widgets import Button, Input, Select, Static
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.models import CompletedCommand
@@ -23,21 +24,21 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#main-top-bar")
             assert app.screen.query_one("#main-body")
             assert app.screen.query_one("#output-folder-section")
+            assert app.screen.query_one("#files-section")
             assert app.screen.query_one("#mode-section")
-            assert app.screen.query_one("#workflow-tabs")
-            assert app.screen.query_one("#logs-section")
-            assert app.screen.query_one("#run-log", Log)
+            assert app.screen.query_one("#main-scroll", VerticalScroll)
+            assert app.screen.query_one("#shared-files", FileList)
+            assert app.screen.query_one("#parameters-section")
             assert app.screen.query_one("#exit-app")
             assert app.screen.query_one("#run-active")
             assert app.screen.query_one("#main-title", Static).content == "NDAX Processor"
             assert app.screen.query_one("#main-subtitle", Static).content == "by eeee_gorka"
-            assert len(app.screen.query("#run-log")) == 1
+            assert app.screen.query_one("#run-status", Static).content == "Ready"
             assert app.screen.query_one("#plot-column-helper", Static)
             assert app.screen.query_one("#table-column-helper", Static)
             assert not app.screen.query_one("#plot-column-controls").display
             assert not app.screen.query_one("#table-column-controls").display
-            assert isinstance(app.screen.query_one("#plot-pane"), VerticalScroll)
-            assert isinstance(app.screen.query_one("#table-pane"), VerticalScroll)
+            assert app.screen.query_one("#mode-select", Select).value == "plot"
             assert app.screen.query_one("#plot-x-min", Input)
             assert app.screen.query_one("#plot-x-max", Input)
             assert app.screen.query_one("#plot-y-min", Input)
@@ -48,8 +49,8 @@ def test_app_mounts_main_screen_widgets() -> None:
             )
             assert app.screen.query_one("#main-top-bar").region.height <= 5
             assert (
-                app.screen.query_one("#run-log", Log).region.y
-                + app.screen.query_one("#run-log", Log).region.height
+                app.screen.query_one("#main-scroll").region.y
+                + app.screen.query_one("#main-scroll").region.height
                 <= 40
             )
             assert (
@@ -95,15 +96,17 @@ def test_main_screen_sections_align_to_shared_grid() -> None:
             await pilot.pause()
             top = app.screen.query_one("#main-top-bar").region
             output = app.screen.query_one("#output-folder-section").region
+            files = app.screen.query_one("#files-section").region
             mode = app.screen.query_one("#mode-section").region
-            logs = app.screen.query_one("#logs-section").region
+            parameters = app.screen.query_one("#parameters-section").region
             bottom = app.screen.query_one("#main-bottom-bar").region
-            left_edges = {top.x, output.x, mode.x, logs.x, bottom.x}
+            left_edges = {top.x, output.x, files.x, mode.x, parameters.x, bottom.x}
             right_edges = {
                 top.x + top.width,
                 output.x + output.width,
+                files.x + files.width,
                 mode.x + mode.width,
-                logs.x + logs.width,
+                parameters.x + parameters.width,
                 bottom.x + bottom.width,
             }
             assert len(left_edges) == 1
@@ -127,7 +130,8 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test() as pilot:
-            plot_files = app.screen.query_one("#plot-files", FileList)
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            mode_select = app.screen.query_one("#mode-select", Select)
             plot_y = app.screen.query_one("#plot-y-column", Select)
             plot_x = app.screen.query_one("#plot-x-column", Select)
             plot_controls = app.screen.query_one("#plot-column-controls")
@@ -141,7 +145,7 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             assert not table_controls.display
             assert table_helper.display
 
-            plot_files.add_paths([Path("plot-1.ndax")])
+            shared_files.set_paths([Path("plot-1.ndax")])
             await pilot.pause()
             assert not plot_y.disabled
             assert not plot_x.disabled
@@ -150,26 +154,24 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             assert plot_y.value == "Voltage"
             assert plot_x.value == "Time"
 
-            plot_files.add_paths([Path("plot-2.ndax")])
+            shared_files.add_paths([Path("plot-2.ndax")])
             await pilot.pause()
             assert plot_y.value == "Voltage"
             assert plot_x.value == "Time"
 
-            tabbed = app.screen.query_one("#workflow-tabs", TabbedContent)
-            tabbed.active = "table-tab"
+            mode_select.value = "table"
             await pilot.pause()
 
-            table_files = app.screen.query_one("#table-files", FileList)
+            shared_files.set_paths([Path("table-1.ndax"), Path("table-2.ndax")])
+            await pilot.pause()
             table_y = app.screen.query_one("#table-y-column", Select)
             table_x = app.screen.query_one("#table-x-column", Select)
-            table_files.add_paths([Path("table-1.ndax"), Path("table-2.ndax")])
-            await pilot.pause()
             assert table_controls.display
             assert not table_helper.display
             assert table_y.value == "Voltage"
             assert table_x.value == "Time"
 
-            table_files.clear_paths()
+            shared_files.clear_paths()
             await pilot.pause()
             assert table_y.disabled
             assert table_x.disabled
@@ -190,17 +192,17 @@ def test_column_load_failures_are_logged_and_disable_selects(monkeypatch) -> Non
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test() as pilot:
-            plot_files = app.screen.query_one("#plot-files", FileList)
+            shared_files = app.screen.query_one("#shared-files", FileList)
             plot_y = app.screen.query_one("#plot-y-column", Select)
             plot_x = app.screen.query_one("#plot-x-column", Select)
-            log = app.screen.query_one("#run-log", Log)
+            status = app.screen.query_one("#run-status", Static)
 
-            plot_files.add_paths([Path("broken.ndax")])
+            shared_files.add_paths([Path("broken.ndax")])
             await pilot.pause()
 
             assert plot_y.disabled
             assert plot_x.disabled
-            assert any("Failed to load columns for plot-tab" in line for line in log.lines)
+            assert "Failed to load columns for" in status.content
 
     asyncio.run(_run())
 
@@ -393,26 +395,22 @@ def test_settings_sections_align_to_shared_grid() -> None:
     asyncio.run(_run())
 
 
-def test_advanced_scrollbar_uses_project_blue() -> None:
+def test_more_options_open_modal_screen() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(90, 30)) as pilot:
             await pilot.pause()
-            plot_advanced_contents = list(app.screen.query_one("#plot-advanced").children)[1]
-            table_advanced_contents = list(app.screen.query_one("#table-advanced").children)[1]
-            await pilot.press("f8")
+
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#plot-advanced")
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#table-advanced")
+
+            button = app.screen.query_one("#plot-more-options", Button)
+            app.screen.on_button_pressed(Button.Pressed(button))
             await pilot.pause()
-            settings_scroll = app.screen.query_one("#settings-scroll")
-            for widget in (plot_advanced_contents, table_advanced_contents):
-                assert widget.styles.scrollbar_color == settings_scroll.styles.scrollbar_color
-                assert (
-                    widget.styles.scrollbar_color_hover
-                    == settings_scroll.styles.scrollbar_color_hover
-                )
-                assert (
-                    widget.styles.scrollbar_color_active
-                    == settings_scroll.styles.scrollbar_color_active
-                )
+
+            assert app.screen.query_one("#advanced-options-dialog")
 
     asyncio.run(_run())
 
@@ -457,7 +455,9 @@ def test_plot_axis_limits_are_outside_advanced_collapsible() -> None:
                     if ancestor.id is not None:
                         ancestor_ids.append(ancestor.id)
                     ancestor = ancestor.parent
-                assert "plot-advanced" not in ancestor_ids
+                assert "plot-form" in ancestor_ids
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#plot-advanced")
 
     asyncio.run(_run())
 
@@ -482,25 +482,11 @@ def test_file_list_uses_blue_empty_state_and_gray_selected_paths() -> None:
 
 
 def test_file_list_supports_removing_single_selected_file() -> None:
-    async def _run() -> None:
-        app = NdaxTuiApp()
-        async with app.run_test(size=(84, 40)) as pilot:
-            plot_files = app.screen.query_one("#plot-files", FileList)
-            plot_files.add_paths(
-                [Path("one.ndax"), Path("two.ndax"), Path("three.ndax")]
-            )
-            await pilot.pause()
-            assert plot_files.paths == (
-                Path("one.ndax"),
-                Path("two.ndax"),
-                Path("three.ndax"),
-            )
-
-            await pilot.click("#plot-files-remove-1")
-            await pilot.pause()
-            assert plot_files.paths == (Path("one.ndax"), Path("three.ndax"))
-
-    asyncio.run(_run())
+    file_list = FileList(
+        [Path("one.ndax"), Path("two.ndax"), Path("three.ndax")]
+    )
+    file_list.remove_path_at(1)
+    assert file_list.paths == (Path("one.ndax"), Path("three.ndax"))
 
 
 def test_palette_preview_places_wave_sample_to_the_right_of_color_code() -> None:
