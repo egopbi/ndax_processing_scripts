@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import threading
 
 from textual.containers import Horizontal, Vertical
@@ -94,6 +95,10 @@ class MainScreen(Screen[None]):
                                             id="plot-x-column",
                                             compact=True,
                                         )
+                                yield Input(placeholder="X min", id="plot-x-min")
+                                yield Input(placeholder="X max", id="plot-x-max")
+                                yield Input(placeholder="Y min", id="plot-y-min")
+                                yield Input(placeholder="Y max", id="plot-y-max")
                                 with Collapsible(
                                     title="Advanced",
                                     collapsed=True,
@@ -102,10 +107,6 @@ class MainScreen(Screen[None]):
                                     id="plot-advanced",
                                 ):
                                     yield Input(placeholder="Labels, comma separated", id="plot-labels")
-                                    yield Input(placeholder="X min", id="plot-x-min")
-                                    yield Input(placeholder="X max", id="plot-x-max")
-                                    yield Input(placeholder="Y min", id="plot-y-min")
-                                    yield Input(placeholder="Y max", id="plot-y-max")
                                     yield Input(
                                         placeholder="Output filename override",
                                         id="plot-output",
@@ -150,7 +151,7 @@ class MainScreen(Screen[None]):
                                             compact=True,
                                         )
                                 yield Input(
-                                    placeholder="Anchor X values, comma separated",
+                                    placeholder="Anchor X values, space or comma separated",
                                     id="table-anchor-x",
                                 )
                                 with Collapsible(
@@ -317,19 +318,27 @@ class MainScreen(Screen[None]):
         labels = tuple(item.strip() for item in value.split(",") if item.strip())
         return labels or None
 
-    def _resolve_output_override(self, value: str) -> Path | None:
+    def _resolve_output_override(
+        self,
+        value: str,
+        *,
+        enforced_suffix: str | None = None,
+    ) -> Path | None:
         stripped = value.strip()
         if not stripped:
             return None
         candidate = Path(stripped)
         if candidate.is_absolute() or candidate.parent != Path("."):
-            return candidate
-        return self.app.current_output_dir / candidate
+            resolved = candidate
+        else:
+            resolved = self.app.current_output_dir / candidate
+
+        if enforced_suffix is not None:
+            resolved = resolved.with_suffix(enforced_suffix)
+        return resolved
 
     def _parse_anchor_x(self, value: str) -> tuple[float, ...]:
-        anchors = tuple(
-            float(item.strip()) for item in value.split(",") if item.strip()
-        )
+        anchors = tuple(float(item) for item in re.split(r"[,\s]+", value.strip()) if item)
         if not anchors:
             raise ValueError("Anchor X must contain at least one value.")
         return anchors
@@ -392,7 +401,8 @@ class MainScreen(Screen[None]):
                     self.query_one("#plot-y-max", Input).value
                 ),
                 output_path=self._resolve_output_override(
-                    self.query_one("#plot-output", Input).value
+                    self.query_one("#plot-output", Input).value,
+                    enforced_suffix=".jpg",
                 ),
             ),
             output_dir=self.app.current_output_dir,
