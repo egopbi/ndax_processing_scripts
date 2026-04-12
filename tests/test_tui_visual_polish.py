@@ -139,3 +139,43 @@ def test_palette_preview_centers_waves_in_white_sample_lane() -> None:
 
     assert lane_1 == "  ~~~~~~"
     assert lane_2 == "  ~~~~~~"
+
+
+def test_actions_remain_visible_after_terminal_resize() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.pause()
+            await pilot.resize_terminal(84, 24)
+            await pilot.pause()
+
+            for widget_id in (
+                "#open-settings",
+                "#exit-app",
+                "#select-output-dir",
+                "#run-active",
+            ):
+                widget = app.screen.query_one(widget_id)
+                assert widget.region.x >= 0
+                assert widget.region.y >= 0
+                assert widget.region.x + widget.region.width <= 84
+                assert widget.region.y + widget.region.height <= 24
+
+            await pilot.press("f8")
+            await pilot.pause()
+            await pilot.resize_terminal(84, 24)
+            await pilot.pause()
+
+            for widget_id in (
+                "#settings-main-menu",
+                "#settings-exit-app",
+                "#settings-save",
+                "#settings-back",
+            ):
+                widget = app.screen.query_one(widget_id)
+                assert widget.region.x >= 0
+                assert widget.region.y >= 0
+                assert widget.region.x + widget.region.width <= 84
+                assert widget.region.y + widget.region.height <= 24
+
+    asyncio.run(_run())
