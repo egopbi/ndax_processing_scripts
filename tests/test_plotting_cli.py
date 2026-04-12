@@ -113,6 +113,27 @@ def _sample_dataframe_with_startup_tail() -> pd.DataFrame:
     })
 
 
+def _sample_dataframe_with_first_extremum_at(position: int) -> pd.DataFrame:
+    working_voltage = [float(index) for index in range(position + 1)]
+    working_voltage.extend([
+        float(position - 1),
+        float(position - 2),
+        float(position - 3),
+        float(position - 4),
+    ])
+    working_length = len(working_voltage)
+    timestamps = pd.date_range(
+        "2026-03-28 10:00:00", periods=working_length + 1, freq="h"
+    )
+    return pd.DataFrame({
+        "Status": ["Rest", *(["CC_DChg"] * working_length)],
+        "Timestamp": timestamps.strftime("%Y-%m-%d %H:%M:%S"),
+        "Time": [float(index * 3600) for index in range(working_length + 1)],
+        "Voltage": [0.0, *working_voltage],
+        "Current(mA)": [0.0, *([-1.0] * working_length)],
+    })
+
+
 def test_cli_errors_when_label_count_does_not_match_files(capsys) -> None:
     module = _load_plot_ndax_module()
 
@@ -522,6 +543,123 @@ def test_cli_trims_long_startup_tail_before_plotting(
     assert len(series) == 1
     assert series[0].frame["__plot_x__"].tolist() == [1.0, 2.0, 3.0, 4.0]
     assert series[0].frame["__plot_y__"].tolist() == [-60.0, 220.0, 0.0, 100.0]
+
+
+def test_cli_applies_shared_majority_startup_trim_for_multi_file_plot(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+    frames = {
+        "sample_a.ndax": _sample_dataframe_with_first_extremum_at(5),
+        "sample_b.ndax": _sample_dataframe_with_first_extremum_at(5),
+        "sample_c.ndax": _sample_dataframe_with_first_extremum_at(7),
+    }
+
+    def fake_load_ndax_dataframe(path: Path) -> pd.DataFrame:
+        return frames[path.name]
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+    ) -> Path:
+        captured["series"] = list(series)
+        captured["x_label"] = x_label
+        captured["y_label"] = y_label
+        captured["output_path"] = output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+
+    output_file = tmp_path / "plot.jpg"
+    exit_code = module.main([
+        "--files",
+        str(tmp_path / "sample_a.ndax"),
+        str(tmp_path / "sample_b.ndax"),
+        str(tmp_path / "sample_c.ndax"),
+        "--y-column",
+        "voltage",
+        "--output",
+        str(output_file),
+    ])
+
+    assert exit_code == 0
+    series = captured["series"]
+    assert series is not None
+    assert [len(line.frame) for line in series] == [4, 4, 6]
+    assert series[2].frame["__plot_y__"].tolist() == [
+        6000.0,
+        7000.0,
+        6000.0,
+        5000.0,
+        4000.0,
+        3000.0,
+    ]
+
+
+def test_cli_applies_largest_startup_trim_when_candidates_tie(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+    frames = {
+        "sample_a.ndax": _sample_dataframe_with_first_extremum_at(5),
+        "sample_b.ndax": _sample_dataframe_with_first_extremum_at(6),
+        "sample_c.ndax": _sample_dataframe_with_first_extremum_at(7),
+    }
+
+    def fake_load_ndax_dataframe(path: Path) -> pd.DataFrame:
+        return frames[path.name]
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+    ) -> Path:
+        captured["series"] = list(series)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+
+    output_file = tmp_path / "plot.jpg"
+    exit_code = module.main([
+        "--files",
+        str(tmp_path / "sample_a.ndax"),
+        str(tmp_path / "sample_b.ndax"),
+        str(tmp_path / "sample_c.ndax"),
+        "--y-column",
+        "voltage",
+        "--output",
+        str(output_file),
+    ])
+
+    assert exit_code == 0
+    series = captured["series"]
+    assert series is not None
+    assert [len(line.frame) for line in series] == [2, 3, 4]
 
 
 def test_resolve_plot_colors_returns_expected_prefixes_and_order() -> None:

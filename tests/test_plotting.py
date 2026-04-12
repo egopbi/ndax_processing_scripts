@@ -8,10 +8,31 @@ from table_data_extraction.extrema import _is_local_maximum, _is_local_minimum
 from table_data_extraction.plotting import (
     prepare_plot_frame,
     resolve_axis_label,
+    resolve_shared_startup_tail_trim_points,
     save_plot,
     trim_leading_rest_rows,
 )
 from table_data_extraction.reader import load_ndax_dataframe
+
+
+def _sample_dataframe_with_first_extremum_at(position: int) -> pd.DataFrame:
+    working_voltage = [float(index) for index in range(position + 1)]
+    working_voltage.extend([
+        float(position - 1),
+        float(position - 2),
+        float(position - 3),
+        float(position - 4),
+    ])
+    working_length = len(working_voltage)
+    timestamps = pd.date_range(
+        "2026-03-28 10:00:00", periods=working_length + 1, freq="h"
+    )
+    return pd.DataFrame({
+        "Status": ["Rest", *(["CC_DChg"] * working_length)],
+        "Timestamp": timestamps.strftime("%Y-%m-%d %H:%M:%S"),
+        "Time": [float(index * 3600) for index in range(working_length + 1)],
+        "Voltage": [0.0, *working_voltage],
+    })
 
 
 def test_save_plot_creates_jpg_file(tmp_path: Path):
@@ -220,3 +241,29 @@ def test_prepare_plot_frame_time_falls_back_to_raw_seconds_when_timestamp_malfor
     assert y_label == "Voltage (mV)"
     assert plot_frame["__plot_x__"].tolist() == [1.0, 2.0]
     assert plot_frame["__plot_y__"].tolist() == [3300.0, 3400.0]
+
+
+def test_resolve_shared_startup_tail_trim_points_uses_majority_value() -> None:
+    candidates = [
+        _sample_dataframe_with_first_extremum_at(5),
+        _sample_dataframe_with_first_extremum_at(5),
+        _sample_dataframe_with_first_extremum_at(7),
+    ]
+
+    assert (
+        resolve_shared_startup_tail_trim_points(candidates, y_col="Voltage")
+        == 5
+    )
+
+
+def test_resolve_shared_startup_tail_trim_points_uses_maximum_on_tie() -> None:
+    candidates = [
+        _sample_dataframe_with_first_extremum_at(5),
+        _sample_dataframe_with_first_extremum_at(6),
+        _sample_dataframe_with_first_extremum_at(7),
+    ]
+
+    assert (
+        resolve_shared_startup_tail_trim_points(candidates, y_col="Voltage")
+        == 7
+    )

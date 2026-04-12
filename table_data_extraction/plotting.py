@@ -1,5 +1,6 @@
 import os
 import re
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -87,20 +88,62 @@ def _find_first_extremum_position(values: pd.Series) -> int | None:
     return None
 
 
-def _trim_leading_startup_tail(
+def _resolve_startup_tail_trim_points(
     dataframe: pd.DataFrame, *, y_col: str
-) -> pd.DataFrame:
+) -> int:
     if y_col != "Voltage" or y_col not in dataframe.columns:
-        return dataframe
+        return 0
 
     first_extremum_position = _find_first_extremum_position(dataframe[y_col])
     if (
         first_extremum_position is None
         or first_extremum_position < STARTUP_TAIL_MIN_POINTS
     ):
+        return 0
+
+    return first_extremum_position
+
+
+def resolve_shared_startup_tail_trim_points(
+    dataframes: Sequence[pd.DataFrame], *, y_col: str
+) -> int:
+    candidates = [
+        _resolve_startup_tail_trim_points(
+            trim_leading_rest_rows(dataframe), y_col=y_col
+        )
+        for dataframe in dataframes
+    ]
+    if not candidates:
+        return 0
+
+    counts = Counter(candidates)
+    highest_frequency = max(counts.values())
+    most_likely_candidates = [
+        points
+        for points, frequency in counts.items()
+        if frequency == highest_frequency
+    ]
+    if len(most_likely_candidates) == 1:
+        return most_likely_candidates[0]
+
+    return max(most_likely_candidates)
+
+
+def _trim_leading_startup_tail(
+    dataframe: pd.DataFrame,
+    *,
+    y_col: str,
+    trim_points: int | None = None,
+) -> pd.DataFrame:
+    effective_trim_points = (
+        _resolve_startup_tail_trim_points(dataframe, y_col=y_col)
+        if trim_points is None
+        else max(trim_points, 0)
+    )
+    if effective_trim_points == 0:
         return dataframe
 
-    return dataframe.iloc[first_extremum_position:].copy()
+    return dataframe.iloc[effective_trim_points:].copy()
 
 
 def _prepare_cumulative_time_hours(
@@ -117,11 +160,14 @@ def prepare_plot_frame(
     *,
     x_col: str,
     y_col: str,
+    startup_tail_trim_points: int | None = None,
 ) -> tuple[pd.DataFrame, str, str]:
     _ensure_required_columns(dataframe, [x_col, y_col])
 
     trimmed_frame = _trim_leading_startup_tail(
-        trim_leading_rest_rows(dataframe), y_col=y_col
+        trim_leading_rest_rows(dataframe),
+        y_col=y_col,
+        trim_points=startup_tail_trim_points,
     )
     has_usable_timestamps = timestamps_are_usable(trimmed_frame)
     source_frame = trimmed_frame

@@ -16,6 +16,7 @@ from table_data_extraction.plotting import (
     PlotSeries,
     prepare_plot_frame,
     resolve_plot_columns,
+    resolve_shared_startup_tail_trim_points,
     save_multi_series_plot,
 )
 from table_data_extraction.reader import load_ndax_dataframe
@@ -91,6 +92,7 @@ def run(argv: Sequence[str] | None = None) -> Path:
     input_paths = [Path(file_path) for file_path in args.files]
 
     lines: list[PlotSeries] = []
+    prepared_inputs = []
     x_label: str | None = None
     y_label: str | None = None
     resolved_x_column: str | None = None
@@ -105,18 +107,11 @@ def run(argv: Sequence[str] | None = None) -> Path:
                 y_column=args.y_column,
             )
         )
-        plot_frame, current_x_label, current_y_label = prepare_plot_frame(
-            dataframe,
-            x_col=current_resolved_x_column,
-            y_col=current_resolved_y_column,
-        )
-        lines.append(PlotSeries(label=label, frame=plot_frame))
+        prepared_inputs.append((dataframe, label))
 
         if resolved_x_column is None:
             resolved_x_column = current_resolved_x_column
             resolved_y_column = current_resolved_y_column
-            x_label = current_x_label
-            y_label = current_y_label
             continue
 
         if (
@@ -129,6 +124,28 @@ def run(argv: Sequence[str] | None = None) -> Path:
 
     assert resolved_x_column is not None
     assert resolved_y_column is not None
+
+    shared_startup_tail_trim_points: int | None = None
+    if len(prepared_inputs) > 1:
+        shared_startup_tail_trim_points = (
+            resolve_shared_startup_tail_trim_points(
+                [dataframe for dataframe, _ in prepared_inputs],
+                y_col=resolved_y_column,
+            )
+        )
+
+    for dataframe, label in prepared_inputs:
+        plot_frame, current_x_label, current_y_label = prepare_plot_frame(
+            dataframe,
+            x_col=resolved_x_column,
+            y_col=resolved_y_column,
+            startup_tail_trim_points=shared_startup_tail_trim_points,
+        )
+        lines.append(PlotSeries(label=label, frame=plot_frame))
+        if x_label is None:
+            x_label = current_x_label
+            y_label = current_y_label
+
     assert x_label is not None
     assert y_label is not None
 
