@@ -64,3 +64,55 @@ def test_settings_top_actions_include_exit_and_match_main_structure() -> None:
             )
 
     asyncio.run(_run())
+
+
+def test_file_action_buttons_keep_files_shared(monkeypatch) -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+
+        async with app.run_test(size=(96, 36)) as pilot:
+            def _fake_choose_files(tab_id: str) -> None:
+                app.call_from_thread(
+                    app.screen._apply_selected_files,
+                    tab_id,
+                    (Path("button-a.ndax"), Path("button-b.ndax")),
+                )
+
+            monkeypatch.setattr(app.screen, "_choose_files_in_thread", _fake_choose_files)
+
+            await pilot.click("#plot-add-files")
+            await pilot.pause()
+
+            plot_files = app.screen.query_one("#plot-files", FileList)
+            table_files = app.screen.query_one("#table-files", FileList)
+            assert plot_files.paths == (
+                Path("button-a.ndax"),
+                Path("button-b.ndax"),
+            )
+            assert table_files.paths == plot_files.paths
+
+            clear_button = app.screen.query_one("#table-clear-files", Button)
+            app.screen.on_button_pressed(Button.Pressed(clear_button))
+            await pilot.pause()
+            assert plot_files.paths == ()
+            assert table_files.paths == ()
+
+    asyncio.run(_run())
+
+
+def test_settings_exit_button_calls_app_exit(monkeypatch) -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        exit_calls: list[bool] = []
+
+        async with app.run_test(size=(96, 36)) as pilot:
+            monkeypatch.setattr(app, "action_exit_app", lambda: exit_calls.append(True))
+
+            await pilot.press("f8")
+            await pilot.pause()
+            await pilot.click("#settings-exit-app")
+            await pilot.pause()
+
+            assert exit_calls == [True]
+
+    asyncio.run(_run())
