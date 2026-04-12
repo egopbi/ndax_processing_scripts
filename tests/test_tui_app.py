@@ -332,3 +332,34 @@ def test_file_list_uses_blue_empty_state_and_gray_selected_paths() -> None:
     assert "two.ndax" in selected_render.plain
     assert any("#b5bcc7" in str(span.style) for span in selected_render.spans)
     assert all("#6bdcff" not in str(span.style) for span in selected_render.spans)
+
+
+def test_file_list_supports_removing_single_selected_file() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(84, 40)) as pilot:
+            plot_files = app.screen.query_one("#plot-files", FileList)
+            plot_files.add_paths(
+                [Path("one.ndax"), Path("two.ndax"), Path("three.ndax")]
+            )
+            await pilot.pause()
+            assert plot_files.paths == (
+                Path("one.ndax"),
+                Path("two.ndax"),
+                Path("three.ndax"),
+            )
+
+            await pilot.click("#plot-files-remove-1")
+            await pilot.pause()
+            assert plot_files.paths == (Path("one.ndax"), Path("three.ndax"))
+
+    asyncio.run(_run())
+
+
+def test_palette_preview_places_wave_sample_to_the_right_of_color_code() -> None:
+    preview = PalettePreview(["#1718FE"])
+    rendered = preview._render_preview()
+    first_line = rendered.plain.splitlines()[0]
+
+    assert first_line.startswith("#1718FE")
+    assert first_line.endswith("~~~~~~")
