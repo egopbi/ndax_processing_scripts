@@ -71,18 +71,13 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
         with Vertical(id="advanced-options-dialog"):
             yield Label(self._title, id="advanced-options-title")
             yield Static(
-                "Adjust labels, output name, or run a health check without changing the main layout.",
+                "Adjust labels or run a health check without changing the main layout.",
                 id="advanced-options-description",
             )
             yield Input(
                 value=self._labels,
                 placeholder="Labels, comma separated",
                 id="advanced-labels",
-            )
-            yield Input(
-                value=self._output_override,
-                placeholder="Output filename override",
-                id="advanced-output",
             )
             with Horizontal(id="advanced-options-actions"):
                 yield Button("Save", id="advanced-save")
@@ -96,7 +91,7 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
             state=AdvancedOptionsState(
                 mode=self._mode,
                 labels=self.query_one("#advanced-labels", Input).value,
-                output_override=self.query_one("#advanced-output", Input).value,
+                output_override=self._output_override,
             ),
         )
 

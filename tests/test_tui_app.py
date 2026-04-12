@@ -483,6 +483,57 @@ def test_plot_override_forces_jpg_suffix() -> None:
     asyncio.run(_run())
 
 
+def test_table_override_forces_csv_suffix_from_main_input(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "table_data_extraction.tui.screens.main_screen.list_columns",
+        lambda path: ["Voltage", "Time"],
+    )
+
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            mode_select = app.screen.query_one("#mode-select", Select)
+
+            shared_files.set_paths([Path("table.ndax")])
+            mode_select.value = "table"
+            await pilot.pause()
+
+            app.screen.query_one("#table-anchor-x", Input).value = "1.0"
+            app.screen.query_one("#table-output-override", Input).value = "custom_name.jpg"
+            command = app.screen._build_active_command()
+
+            assert command.mode == "table"
+            assert command.output_path == app.current_output_dir / "custom_name.csv"
+
+    asyncio.run(_run())
+
+
+def test_output_override_inputs_live_in_main_parameters_forms() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.pause()
+            plot_override = app.screen.query_one("#plot-output-override", Input)
+            plot_y_max = app.screen.query_one("#plot-y-max", Input)
+            plot_more = app.screen.query_one("#plot-more-options", Button)
+
+            assert plot_override.region.y > plot_y_max.region.y
+            assert plot_override.region.y < plot_more.region.y
+
+            app.screen.query_one("#mode-select", Select).value = "table"
+            await pilot.pause()
+
+            table_override = app.screen.query_one("#table-output-override", Input)
+            table_anchor = app.screen.query_one("#table-anchor-x", Input)
+            table_more = app.screen.query_one("#table-more-options", Button)
+
+            assert table_override.region.y > table_anchor.region.y
+            assert table_override.region.y < table_more.region.y
+
+    asyncio.run(_run())
+
+
 def test_plot_axis_limits_are_outside_advanced_collapsible() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()

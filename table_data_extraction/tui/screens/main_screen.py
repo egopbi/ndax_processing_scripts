@@ -148,6 +148,10 @@ class MainScreen(Screen[None]):
                                 with Horizontal(classes="inline-input-row"):
                                     yield Input(placeholder="Y min", id="plot-y-min")
                                     yield Input(placeholder="Y max", id="plot-y-max")
+                                yield Input(
+                                    placeholder="Output filename override",
+                                    id="plot-output-override",
+                                )
                                 with Horizontal(classes="secondary-actions"):
                                     yield Button(
                                         "More Options...",
@@ -187,6 +191,10 @@ class MainScreen(Screen[None]):
                                 yield Input(
                                     placeholder="Anchor X values, space or comma separated",
                                     id="table-anchor-x",
+                                )
+                                yield Input(
+                                    placeholder="Output filename override",
+                                    id="table-output-override",
                                 )
                                 with Horizontal(classes="secondary-actions"):
                                     yield Button(
@@ -363,6 +371,11 @@ class MainScreen(Screen[None]):
             raise ValueError("Anchor X must contain at least one value.")
         return anchors
 
+    def _output_override_input_for_mode(self, mode: str) -> Input:
+        if mode == "table":
+            return self.query_one("#table-output-override", Input)
+        return self.query_one("#plot-output-override", Input)
+
     def _selected_health_file(self) -> Path:
         if not self.active_file_list.paths:
             raise ValueError("Select at least one NDAX file first.")
@@ -389,7 +402,8 @@ class MainScreen(Screen[None]):
                     ),
                     labels=self._parse_labels(advanced.labels),
                     output_path=self._resolve_output_override(
-                        advanced.output_override
+                        self._output_override_input_for_mode("table").value,
+                        enforced_suffix=".csv",
                     ),
                 ),
                 output_dir=self.app.current_output_dir,
@@ -421,7 +435,7 @@ class MainScreen(Screen[None]):
                     self.query_one("#plot-y-max", Input).value
                 ),
                 output_path=self._resolve_output_override(
-                    advanced.output_override,
+                    self._output_override_input_for_mode("plot").value,
                     enforced_suffix=".jpg",
                 ),
             ),
@@ -536,7 +550,7 @@ class MainScreen(Screen[None]):
             AdvancedOptionsScreen(
                 mode=mode,
                 labels=state.labels,
-                output_override=state.output_override,
+                output_override=self._output_override_input_for_mode(mode).value,
             ),
             self._advanced_options_closed,
         )

@@ -1,7 +1,9 @@
 import asyncio
 from pathlib import Path
 
+import pytest
 from textual.app import App
+from textual.css.query import NoMatches
 from textual.widgets import Button, Input, SelectionList, Static
 
 from table_data_extraction.tui.screens.advanced_options_screen import (
@@ -101,7 +103,8 @@ def test_advanced_options_screen_saves_plot_values() -> None:
         async with app.run_test(size=(90, 30)) as pilot:
             assert app.screen.query_one("#advanced-options-title", Static).content == "Plot Options"
             app.screen.query_one("#advanced-labels", Input).value = "a, b, c"
-            app.screen.query_one("#advanced-output", Input).value = "custom-output"
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#advanced-output", Input)
             await pilot.click("#advanced-save")
             await pilot.pause()
 
@@ -111,7 +114,7 @@ def test_advanced_options_screen_saves_plot_values() -> None:
             )
             assert app.screen_result.state.mode == "plot"
             assert app.screen_result.state.labels == "a, b, c"
-            assert app.screen_result.state.output_override == "custom-output"
+            assert app.screen_result.state.output_override == "plot.jpg"
 
     asyncio.run(_run())
 
@@ -130,6 +133,8 @@ def test_advanced_options_screen_can_request_health_check_for_table() -> None:
                 app.screen.query_one("#advanced-options-title", Static).content
                 == "Comparison Table Options"
             )
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#advanced-output", Input)
             await pilot.click("#advanced-health-check")
             await pilot.pause()
 
