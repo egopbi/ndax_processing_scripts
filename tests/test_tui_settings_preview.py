@@ -51,6 +51,37 @@ def test_settings_actions_remain_visible_on_small_viewports(
     asyncio.run(_run())
 
 
+@pytest.mark.parametrize("size", [(64, 18), (60, 18)])
+def test_settings_actions_and_preview_hold_on_tighter_viewports(
+    size: tuple[int, int]
+) -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=size) as pilot:
+            await pilot.press("f8")
+            await pilot.pause()
+
+            for widget_id in (
+                "#settings-main-menu",
+                "#settings-exit-app",
+                "#settings-save",
+                "#settings-back",
+            ):
+                widget = app.screen.query_one(widget_id)
+                assert widget.region.x >= 0
+                assert widget.region.y >= 0
+                assert widget.region.x + widget.region.width <= size[0]
+                assert widget.region.y + widget.region.height <= size[1]
+
+            panel = app.screen.query_one("#settings-preview-panel")
+            preview = app.screen.query_one("#settings-palette-preview", PalettePreview)
+            assert preview.region.width <= panel.region.width
+            assert preview.region.height <= panel.region.height
+            assert "Combined preview" in preview.content.plain
+
+    asyncio.run(_run())
+
+
 @pytest.mark.parametrize("size", [(76, 24), (70, 20)])
 def test_palette_preview_stays_within_white_block_on_small_viewports(
     size: tuple[int, int]
