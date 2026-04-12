@@ -9,9 +9,8 @@ from textual.widgets import Static
 
 
 class PalettePreview(Static):
-    _WAVE_PATTERN = "~~~~~~"
-    _SAMPLE_LANE_WIDTH = 10
-    _COMBINED_SWATCH_WIDTH = 6
+    _WAVE_PATTERN = "~"
+    _WAVE_LANE_WIDTH = 18
 
     def __init__(
         self,
@@ -50,21 +49,10 @@ class PalettePreview(Static):
             return "black"
         return color
 
-    @classmethod
-    def _wave_lane(cls) -> str:
-        # Keep the wave centered in a fixed-width sample lane while preserving
-        # compatibility with tests that expect the line to end with tildes.
-        return cls._WAVE_PATTERN.center(cls._SAMPLE_LANE_WIDTH).rstrip()
-
-    @classmethod
-    def _swatch_for_color(cls, color: str) -> str:
-        return "█" * cls._COMBINED_SWATCH_WIDTH
-
     def _render_individual_row(self, color: str) -> Text:
         foreground = self._foreground_for_color(color)
         sample = self._sample_for_color(color)
-        wave_lane = self._wave_lane()
-        wave_start = wave_lane.index(self._WAVE_PATTERN)
+        wave_lane = self._WAVE_PATTERN * self._WAVE_LANE_WIDTH
         row = Text(style="black on white")
         row.append(color, style=f"{foreground} on white")
         row.append(" ", style="black on white")
@@ -72,28 +60,10 @@ class PalettePreview(Static):
         row.append(wave_lane, style="black on white")
         row.stylize(
             f"bold {sample} on white",
-            lane_start + wave_start,
-            lane_start + wave_start + len(self._WAVE_PATTERN),
+            lane_start,
+            lane_start + len(wave_lane),
         )
         return row
-
-    def _render_combined_preview(self) -> Text:
-        text = Text(style="black on white")
-        text.append("\n")
-        text.append("Combined preview", style="bold black on white")
-        text.append("\n")
-
-        for index, color in enumerate(self._palette_colors):
-            sample = self._sample_for_color(color)
-            if index:
-                text.append("  ", style="black on white")
-            text.append(color, style=f"{sample} on white")
-            text.append(" ", style="black on white")
-            text.append(
-                self._swatch_for_color(color),
-                style=f"bold {sample} on white",
-            )
-        return text
 
     def _render_preview(self) -> Text:
         text = Text()
@@ -105,7 +75,6 @@ class PalettePreview(Static):
             text.append_text(self._render_individual_row(color))
             if index < len(self._palette_colors) - 1:
                 text.append("\n", style="black on white")
-        text.append_text(self._render_combined_preview())
         return text
 
     def _sync_render(self) -> None:

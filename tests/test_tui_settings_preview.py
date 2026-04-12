@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 from textual.containers import Vertical
-from textual.widgets import Input
+from textual.widgets import Input, Label
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.widgets.palette_preview import PalettePreview
@@ -22,6 +22,70 @@ def test_settings_preview_uses_vertical_flow_and_spans_full_section() -> None:
             assert palette_row.region.y < preview_panel.region.y
             assert abs(preview_panel.region.x - palette_input.region.x) <= 1
             assert preview_panel.region.width >= palette_input.region.width - 2
+
+    asyncio.run(_run())
+
+
+def test_settings_top_actions_match_main_screen_alignment() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.pause()
+
+            main_actions = app.screen.query_one("#main-top-actions")
+            main_primary = app.screen.query_one("#open-settings")
+            main_exit = app.screen.query_one("#exit-app")
+
+            await pilot.press("f8")
+            await pilot.pause()
+
+            settings_actions = app.screen.query_one("#settings-top-actions")
+            settings_primary = app.screen.query_one("#settings-main-menu")
+            settings_exit = app.screen.query_one("#settings-exit-app")
+
+            assert settings_actions.region.x == main_actions.region.x
+            assert settings_actions.region.width == main_actions.region.width
+            assert settings_primary.region.x == main_primary.region.x
+            assert settings_primary.region.width == main_primary.region.width
+            assert settings_exit.region.x == main_exit.region.x
+            assert settings_exit.region.width == main_exit.region.width
+
+    asyncio.run(_run())
+
+
+def test_settings_defaults_use_persistent_labels_without_placeholders() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.press("f8")
+            await pilot.pause()
+
+            for label_id, expected_text in (
+                ("#settings-label-plot-x", "Plot X column"),
+                ("#settings-label-plot-y", "Plot Y column"),
+                ("#settings-label-csv-columns", "CSV columns"),
+                ("#settings-label-window-points", "Window points"),
+                ("#settings-label-zero-threshold", "Zero threshold"),
+                ("#settings-label-min-zone-points", "Minimum zone points"),
+                (
+                    "#settings-label-min-extrema-separation-points",
+                    "Minimum extrema separation points",
+                ),
+            ):
+                label = app.screen.query_one(label_id, Label)
+                assert label.content == expected_text
+
+            for input_id in (
+                "#settings-plot-x",
+                "#settings-plot-y",
+                "#settings-csv-columns",
+                "#settings-window-points",
+                "#settings-zero-threshold",
+                "#settings-min-zone-points",
+                "#settings-min-extrema-separation-points",
+            ):
+                control = app.screen.query_one(input_id, Input)
+                assert control.placeholder == ""
 
     asyncio.run(_run())
 
@@ -77,7 +141,19 @@ def test_settings_actions_and_preview_hold_on_tighter_viewports(
             preview = app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert preview.region.width <= panel.region.width
             assert preview.region.height <= panel.region.height
-            assert "Combined preview" in preview.content.plain
+
+            palette_value = app.screen.query_one("#settings-palette", Input).value
+            expected_colors = tuple(palette_value.split())
+            preview_lines = [
+                line
+                for line in preview.content.plain.splitlines()
+                if line.startswith("#")
+            ]
+            assert "Combined preview" not in preview.content.plain
+            assert len(preview_lines) == len(expected_colors)
+            for expected_color, row in zip(expected_colors, preview_lines):
+                assert row.startswith(expected_color)
+                assert row.count("~") >= 12
 
     asyncio.run(_run())
 
@@ -107,17 +183,15 @@ def test_palette_preview_stays_within_white_block_on_small_viewports(
     asyncio.run(_run())
 
 
-def test_palette_preview_renders_rows_and_combined_block_on_white() -> None:
+def test_palette_preview_renders_only_color_rows_with_long_white_lanes() -> None:
     preview = PalettePreview(["#1718FE", "#D35400", "#128A0C"])
     rendered = preview._render_preview()
-    lines = rendered.plain.splitlines()
+    lines = [line for line in rendered.plain.splitlines() if line.startswith("#")]
 
+    assert "Combined preview" not in rendered.plain
+    assert len(lines) == 3
     assert lines[0].startswith("#1718FE")
     assert lines[1].startswith("#D35400")
     assert lines[2].startswith("#128A0C")
-    assert "Combined preview" in rendered.plain
-    assert lines[-1].startswith("#1718FE")
-    assert "#D35400" in lines[-1]
-    assert "#128A0C" in lines[-1]
-    assert "██████" in lines[-1]
+    assert all(line.count("~") >= 12 for line in lines)
     assert any("on white" in str(span.style) for span in rendered.spans)

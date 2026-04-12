@@ -53,39 +53,60 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                 with VerticalScroll(id="settings-scroll"):
                     with Vertical(id="settings-defaults-section", classes="section-shell"):
                         yield Label("Defaults", classes="section-title")
+                        yield Label(
+                            "Plot X column",
+                            id="settings-label-plot-x",
+                        )
                         yield Input(
                             value=self._current_config["plot"]["defaults"]["x_column"],
-                            placeholder="Plot X column",
                             id="settings-plot-x",
+                        )
+                        yield Label(
+                            "Plot Y column",
+                            id="settings-label-plot-y",
                         )
                         yield Input(
                             value=self._current_config["plot"]["defaults"]["y_column"],
-                            placeholder="Plot Y column",
                             id="settings-plot-y",
+                        )
+                        yield Label(
+                            "CSV columns",
+                            id="settings-label-csv-columns",
                         )
                         yield Input(
                             value=csv_columns,
-                            placeholder="CSV columns, comma separated",
                             id="settings-csv-columns",
+                        )
+                        yield Label(
+                            "Window points",
+                            id="settings-label-window-points",
                         )
                         yield Input(
                             value=str(extrema["window_points"]),
-                            placeholder="Window points",
                             id="settings-window-points",
+                        )
+                        yield Label(
+                            "Zero threshold",
+                            id="settings-label-zero-threshold",
                         )
                         yield Input(
                             value=str(extrema["zero_threshold"]),
-                            placeholder="Zero threshold",
                             id="settings-zero-threshold",
+                        )
+                        yield Label(
+                            "Minimum zone points",
+                            id="settings-label-min-zone-points",
                         )
                         yield Input(
                             value=str(extrema["min_zone_points"]),
-                            placeholder="Minimum zone points",
                             id="settings-min-zone-points",
+                        )
+                        yield Label(
+                            "Minimum extrema separation points",
+                            id="settings-label-min-extrema-separation-points",
                         )
                         yield Input(
                             value=str(extrema["min_extrema_separation_points"]),
-                            placeholder="Minimum extrema separation points",
                             id="settings-min-extrema-separation-points",
                         )
                     with Vertical(id="settings-palette-section", classes="section-shell"):
@@ -112,6 +133,11 @@ class SettingsScreen(Screen[dict[str, object] | None]):
         preview_panel.styles.width = "1fr"
         preview_panel.styles.min_width = 0
         preview_panel.styles.margin = (0, 0, 0, 0)
+
+        for button_id in ("#settings-main-menu", "#settings-exit-app"):
+            button = self.query_one(button_id, Button)
+            button.styles.width = 16
+            button.styles.min_width = 16
         self._refresh_preview()
 
     def _palette_values(self) -> list[str]:

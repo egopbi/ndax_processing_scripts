@@ -69,6 +69,91 @@ def test_output_row_stacks_button_and_path_cleanly() -> None:
     asyncio.run(_run())
 
 
+def test_output_folder_section_keeps_controls_within_section_bounds() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 34)) as pilot:
+            await pilot.pause()
+
+            section = app.screen.query_one("#output-folder-section").region
+            files_section = app.screen.query_one("#files-section").region
+            select_button = app.screen.query_one("#select-output-dir").region
+            output_path = app.screen.query_one("#current-output-dir").region
+
+            section_bottom = section.y + section.height
+            assert select_button.y >= section.y
+            assert select_button.y + select_button.height <= section_bottom
+            assert output_path.y + output_path.height <= section_bottom
+            assert section_bottom <= files_section.y
+
+    asyncio.run(_run())
+
+
+def test_mode_select_current_keeps_ascii_border_when_focused() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 34)) as pilot:
+            await pilot.pause()
+
+            mode_select = app.screen.query_one("#mode-select", Select)
+            select_current = mode_select.query_one("SelectCurrent")
+
+            mode_select.focus()
+            await pilot.pause()
+
+            border = select_current.styles.border
+            assert border.top[0] == "ascii"
+            assert border.right[0] == "ascii"
+            assert border.bottom[0] == "ascii"
+            assert border.left[0] == "ascii"
+
+    asyncio.run(_run())
+
+
+@pytest.mark.parametrize(
+    ("mode", "controls_id", "x_select_id"),
+    [
+        ("plot", "#plot-column-controls", "#plot-x-column"),
+        ("table", "#table-column-controls", "#table-x-column"),
+    ],
+)
+def test_column_controls_do_not_leave_expanding_blank_space(
+    monkeypatch,
+    mode: str,
+    controls_id: str,
+    x_select_id: str,
+) -> None:
+    monkeypatch.setattr(
+        "table_data_extraction.tui.screens.main_screen.list_columns",
+        lambda path: ["Voltage", "Time", "Current(mA)"],
+    )
+
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(110, 40)) as pilot:
+            await pilot.pause()
+
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            mode_select = app.screen.query_one("#mode-select", Select)
+            shared_files.set_paths([Path("sample.ndax")])
+            await pilot.pause()
+
+            mode_select.value = mode
+            await pilot.pause()
+
+            controls_region = app.screen.query_one(controls_id).region
+            x_select_region = app.screen.query_one(x_select_id, Select).region
+            extra_space = (
+                controls_region.y
+                + controls_region.height
+                - (x_select_region.y + x_select_region.height)
+            )
+
+            assert extra_space <= 1
+
+    asyncio.run(_run())
+
+
 def test_more_options_replace_nested_advanced_sections() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
@@ -157,7 +242,7 @@ def test_main_file_list_uses_modal_removal_flow() -> None:
     asyncio.run(_run())
 
 
-def test_palette_preview_centers_waves_in_white_sample_lane() -> None:
+def test_palette_preview_uses_extended_color_lines_in_white_lane() -> None:
     preview = PalettePreview(["#1718FE", "#D35400"])
     rendered = preview._render_preview().plain.splitlines()
 
@@ -167,8 +252,10 @@ def test_palette_preview_centers_waves_in_white_sample_lane() -> None:
     lane_1 = rendered[0][len("#1718FE ") :]
     lane_2 = rendered[1][len("#D35400 ") :]
 
-    assert lane_1 == "  ~~~~~~"
-    assert lane_2 == "  ~~~~~~"
+    assert len(lane_1) >= 12
+    assert len(lane_2) >= 12
+    assert set(lane_1) == {"~"}
+    assert set(lane_2) == {"~"}
 
 
 def test_actions_remain_visible_after_terminal_resize() -> None:
