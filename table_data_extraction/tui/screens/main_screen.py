@@ -45,6 +45,10 @@ class MainScreen(Screen[None]):
         ("f8", "open_settings", "Settings"),
     ]
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._syncing_shared_files = False
+
     def compose(self):
         with Vertical(id="main-shell"):
             with Horizontal(id="main-top-bar", classes="surface-box"):
@@ -52,9 +56,9 @@ class MainScreen(Screen[None]):
                     yield Label("NDAX Processor", id="main-title")
                     yield Label("by eeee_gorka", id="main-subtitle")
                 yield Static("", classes="spacer")
-                with Horizontal(id="main-top-actions"):
-                    yield Button("Settings", id="open-settings")
-                    yield Button("Exit", id="exit-app")
+                with Horizontal(id="main-top-actions", classes="top-actions"):
+                    yield Button("Settings", id="open-settings", classes="top-action-button")
+                    yield Button("Exit", id="exit-app", classes="top-action-button")
             with Grid(id="main-body"):
                 with Vertical(id="output-folder-section", classes="section-shell"):
                     yield Label("Output folder", classes="section-title")
@@ -484,6 +488,38 @@ class MainScreen(Screen[None]):
         else:
             self.query_one("#plot-files", FileList).add_paths(selected)
 
+    def _on_file_list_paths_changed(
+        self,
+        source_tab: str,
+        paths: tuple[Path, ...],
+    ) -> None:
+        if self._syncing_shared_files:
+            return
+        self._sync_shared_file_lists(paths, source_tab=source_tab)
+
+    def _sync_shared_file_lists(
+        self,
+        paths: tuple[Path, ...],
+        *,
+        source_tab: str | None = None,
+    ) -> None:
+        self._syncing_shared_files = True
+        try:
+            for tab_id, widget_id in (
+                ("plot-tab", "#plot-files"),
+                ("table-tab", "#table-files"),
+            ):
+                if source_tab is not None and tab_id == source_tab:
+                    continue
+                file_list = self.query_one(widget_id, FileList)
+                if file_list.paths != paths:
+                    file_list.set_paths(paths)
+        finally:
+            self._syncing_shared_files = False
+
+        self._refresh_column_selects("plot-tab", paths)
+        self._refresh_column_selects("table-tab", paths)
+
     def _choose_files_in_thread(self, tab_id: str) -> None:
         selected = choose_ndax_files(initial_dir=self.app.current_output_dir)
         if selected:
@@ -532,16 +568,14 @@ class MainScreen(Screen[None]):
         self.refresh_state_from_app()
         plot_files = self.query_one("#plot-files", FileList)
         table_files = self.query_one("#table-files", FileList)
-        plot_files.paths_changed_callback = lambda paths: self._refresh_column_selects(
-            "plot-tab",
-            paths,
+        plot_files.paths_changed_callback = lambda paths: self._on_file_list_paths_changed(
+            "plot-tab", paths
         )
-        table_files.paths_changed_callback = lambda paths: self._refresh_column_selects(
-            "table-tab",
-            paths,
+        table_files.paths_changed_callback = (
+            lambda paths: self._on_file_list_paths_changed("table-tab", paths)
         )
-        self._refresh_column_selects("plot-tab", plot_files.paths)
-        self._refresh_column_selects("table-tab", table_files.paths)
+        initial_paths = plot_files.paths if plot_files.paths else table_files.paths
+        self._sync_shared_file_lists(initial_paths)
 
     def _handle_file_remove_button(self, button_id: str | None) -> bool:
         if button_id is None or "-remove-" not in button_id:
@@ -565,7 +599,7 @@ class MainScreen(Screen[None]):
             event.stop()
             return
         if button_id in {"plot-add-files", "table-add-files"}:
-            tab_id = self.current_tab
+            tab_id = "plot-tab" if button_id == "plot-add-files" else "table-tab"
             threading.Thread(
                 target=self._choose_files_in_thread,
                 args=(tab_id,),
@@ -579,7 +613,8 @@ class MainScreen(Screen[None]):
             ).start()
             return
         if button_id in {"plot-clear-files", "table-clear-files"}:
-            self.active_file_list.clear_paths()
+            file_list_id = "#plot-files" if button_id == "plot-clear-files" else "#table-files"
+            self.query_one(file_list_id, FileList).clear_paths()
             return
         if button_id == "run-active":
             self._start_run()

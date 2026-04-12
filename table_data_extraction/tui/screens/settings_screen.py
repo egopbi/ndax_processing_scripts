@@ -16,6 +16,7 @@ from table_data_extraction.tui.widgets.palette_preview import PalettePreview
 class SettingsScreen(Screen[dict[str, object] | None]):
     BINDINGS = [
         ("escape", "dismiss(None)", "Back"),
+        ("f6", "exit_app", "Exit"),
     ]
 
     def __init__(self) -> None:
@@ -37,8 +38,17 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                     yield Label("NDAX Processor", id="settings-title")
                     yield Label("by eeee_gorka", id="settings-subtitle")
                 yield Static("", classes="spacer")
-                with Horizontal(id="settings-top-actions"):
-                    yield Button("Main Menu", id="settings-main-menu")
+                with Horizontal(id="settings-top-actions", classes="top-actions"):
+                    yield Button(
+                        "Main Menu",
+                        id="settings-main-menu",
+                        classes="top-action-button",
+                    )
+                    yield Button(
+                        "Exit",
+                        id="settings-exit-app",
+                        classes="top-action-button",
+                    )
             with Vertical(id="settings-body"):
                 with VerticalScroll(id="settings-scroll"):
                     with Vertical(id="settings-defaults-section", classes="section-shell"):
@@ -136,9 +146,16 @@ class SettingsScreen(Screen[dict[str, object] | None]):
         if event.input.id == "settings-palette":
             self._refresh_preview()
 
+    def action_exit_app(self) -> None:
+        self.app.action_exit_app()
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "settings-main-menu":
             self.dismiss(None)
+            return
+
+        if event.button.id == "settings-exit-app":
+            self.app.action_exit_app()
             return
 
         if event.button.id == "settings-save":
