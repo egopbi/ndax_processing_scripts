@@ -183,7 +183,11 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
     asyncio.run(_run())
 
 
-def test_column_load_failures_are_logged_and_disable_selects(monkeypatch) -> None:
+@pytest.mark.parametrize("mode", ["plot", "table"])
+def test_column_load_failures_are_logged_and_disable_selects(
+    monkeypatch,
+    mode: str,
+) -> None:
     monkeypatch.setattr(
         "table_data_extraction.tui.screens.main_screen.list_columns",
         lambda path: (_ for _ in ()).throw(RuntimeError("boom")),
@@ -196,13 +200,17 @@ def test_column_load_failures_are_logged_and_disable_selects(monkeypatch) -> Non
             plot_y = app.screen.query_one("#plot-y-column", Select)
             plot_x = app.screen.query_one("#plot-x-column", Select)
             status = app.screen.query_one("#run-status", Static)
+            mode_select = app.screen.query_one("#mode-select", Select)
+
+            mode_select.value = mode
+            await pilot.pause()
 
             shared_files.add_paths([Path("broken.ndax")])
             await pilot.pause()
 
             assert plot_y.disabled
             assert plot_x.disabled
-            assert "Failed to load columns for" in status.content
+            assert status.content == f"Failed to load columns for {mode}: boom"
 
     asyncio.run(_run())
 
@@ -398,7 +406,7 @@ def test_settings_sections_align_to_shared_grid() -> None:
 def test_more_options_open_modal_screen() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
-        async with app.run_test(size=(90, 30)) as pilot:
+        async with app.run_test(size=(100, 36)) as pilot:
             await pilot.pause()
 
             with pytest.raises(NoMatches):
@@ -406,8 +414,11 @@ def test_more_options_open_modal_screen() -> None:
             with pytest.raises(NoMatches):
                 app.screen.query_one("#table-advanced")
 
+            main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
             button = app.screen.query_one("#plot-more-options", Button)
-            app.screen.on_button_pressed(Button.Pressed(button))
+            main_scroll.scroll_to_widget(button, animate=False, immediate=True)
+            await pilot.pause()
+            await pilot.click("#plot-more-options")
             await pilot.pause()
 
             assert app.screen.query_one("#advanced-options-dialog")

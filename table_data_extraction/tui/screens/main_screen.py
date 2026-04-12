@@ -492,8 +492,10 @@ class MainScreen(Screen[None]):
         self.active_file_list.add_paths(selected)
 
     def _on_file_list_paths_changed(self, paths: tuple[Path, ...]) -> None:
-        self._refresh_column_selects("plot", paths)
-        self._refresh_column_selects("table", paths)
+        active_mode = self.current_mode
+        passive_mode = "table" if active_mode == "plot" else "plot"
+        self._refresh_column_selects(passive_mode, paths)
+        self._refresh_column_selects(active_mode, paths)
 
     def _choose_files_in_thread(self) -> None:
         selected = choose_ndax_files(initial_dir=self.app.current_output_dir)

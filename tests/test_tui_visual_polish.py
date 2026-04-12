@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from textual.css.query import NoMatches
-from textual.widgets import Static
+from textual.widgets import Select, Static, SelectionList
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.widgets.file_list import FileList
@@ -89,17 +89,70 @@ def test_more_options_replace_nested_advanced_sections() -> None:
 def test_main_file_list_uses_modal_removal_flow() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
-        async with app.run_test(size=(84, 30)) as pilot:
-            await pilot.pause()
+        column_map = {
+            Path("keep.ndax"): ["Voltage", "Time", "Current"],
+            Path("remove-a.ndax"): ["Voltage", "Frequency"],
+            Path("remove-b.ndax"): ["Voltage", "Time", "Temperature"],
+        }
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(
+                "table_data_extraction.tui.screens.main_screen.list_columns",
+                lambda path: column_map[Path(path)],
+            )
+            async with app.run_test(size=(84, 30)) as pilot:
+                await pilot.pause()
 
-            shared_files = app.screen.query_one("#shared-files", FileList)
-            shared_files.add_paths([Path(f"C:/tmp/shared_{i}.ndax") for i in range(3)])
-            await pilot.pause()
+                shared_files = app.screen.query_one("#shared-files", FileList)
+                plot_y = app.screen.query_one("#plot-y-column", Select)
+                plot_x = app.screen.query_one("#plot-x-column", Select)
+                shared_files.set_paths(
+                    [
+                        Path("keep.ndax"),
+                        Path("remove-a.ndax"),
+                        Path("remove-b.ndax"),
+                    ]
+                )
+                await pilot.pause()
 
-            assert len(app.screen.query("#shared-files-remove-0")) == 0
-            await pilot.click("#shared-manage-files")
-            await pilot.pause()
-            assert app.screen.query_one("#manage-files-dialog")
+                initial_options = tuple(prompt for prompt, _ in plot_x._options)
+                assert initial_options == ("", "Voltage")
+
+                await pilot.click("#shared-manage-files")
+                await pilot.pause()
+                assert app.screen.query_one("#manage-files-dialog")
+
+                selection_list = app.screen.query_one(
+                    "#manage-files-list",
+                    SelectionList,
+                )
+                remove_button = app.screen.query_one("#manage-files-remove")
+
+                selection_list.select(Path("remove-a.ndax"))
+                selection_list.select(Path("remove-b.ndax"))
+                await pilot.pause()
+
+                assert not remove_button.disabled
+                await pilot.click("#manage-files-remove")
+                await pilot.pause()
+
+                assert shared_files.paths == (Path("keep.ndax"),)
+                assert tuple(prompt for prompt, _ in plot_x._options) == (
+                    "",
+                    "Voltage",
+                    "Time",
+                    "Current",
+                )
+                assert tuple(prompt for prompt, _ in plot_y._options) == (
+                    "",
+                    "Voltage",
+                    "Time",
+                    "Current",
+                )
+                assert plot_y.value == "Voltage"
+                assert plot_x.value == "Voltage"
+                assert not plot_y.disabled
+                assert not plot_x.disabled
+                assert len(app.screen.query("#manage-files-dialog")) == 0
 
     asyncio.run(_run())
 
