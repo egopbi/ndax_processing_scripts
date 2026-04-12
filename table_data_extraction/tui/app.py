@@ -202,6 +202,15 @@ class NdaxTuiApp(App[None]):
         border: ascii #6db7ff;
     }
 
+    /* Keep SelectCurrent in ASCII mode to avoid unsupported tall glyphs on Windows. */
+    Select > SelectCurrent {
+        border: ascii #343a43;
+    }
+
+    Select:focus > SelectCurrent {
+        border: ascii #6db7ff;
+    }
+
     Button {
         background: #2a2f36;
         color: #e5e7eb;
@@ -283,6 +292,7 @@ class NdaxTuiApp(App[None]):
 
     #plot-column-controls, #table-column-controls {
         display: none;
+        height: auto;
         min-height: 0;
     }
 
@@ -358,6 +368,10 @@ class NdaxTuiApp(App[None]):
 
     #files-section, #parameters-section {
         width: 1fr;
+        height: auto;
+    }
+
+    #output-folder-section {
         height: auto;
     }
 
