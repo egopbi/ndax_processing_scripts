@@ -584,6 +584,7 @@ class MainScreen(Screen[None]):
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "mode-select":
             self._sync_mode_form()
+            self._on_file_list_paths_changed(self.active_file_list.paths)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id

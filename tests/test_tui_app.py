@@ -215,6 +215,36 @@ def test_column_load_failures_are_logged_and_disable_selects(
     asyncio.run(_run())
 
 
+def test_column_load_failure_status_tracks_visible_mode_after_switch(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "table_data_extraction.tui.screens.main_screen.list_columns",
+        lambda path: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            status = app.screen.query_one("#run-status", Static)
+            mode_select = app.screen.query_one("#mode-select", Select)
+
+            shared_files.add_paths([Path("broken.ndax")])
+            await pilot.pause()
+            assert status.content == "Failed to load columns for plot: boom"
+
+            mode_select.value = "table"
+            await pilot.pause()
+            assert status.content == "Failed to load columns for table: boom"
+
+            mode_select.value = "plot"
+            await pilot.pause()
+            assert status.content == "Failed to load columns for plot: boom"
+
+    asyncio.run(_run())
+
+
 @pytest.mark.parametrize("launch_mode", ["run", "health"])
 def test_exit_waits_for_command_cleanup_during_start_boundary(monkeypatch, launch_mode: str) -> None:
     async def _run() -> None:
