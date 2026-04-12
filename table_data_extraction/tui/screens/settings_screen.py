@@ -90,7 +90,7 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                         )
                     with Vertical(id="settings-palette-section", classes="section-shell"):
                         yield Label("Palette", id="settings-palette-label", classes="section-title")
-                        with Horizontal(id="settings-palette-row"):
+                        with Vertical(id="settings-palette-row"):
                             yield Input(
                                 value=palette_text,
                                 placeholder="Hex colors separated by spaces",
@@ -106,6 +106,13 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                 yield Button("Save", variant="success", id="settings-save")
                 yield Button("Back", variant="default", id="settings-back")
             yield Static("", id="settings-status")
+
+    def on_mount(self) -> None:
+        preview_panel = self.query_one("#settings-preview-panel", Vertical)
+        preview_panel.styles.width = "1fr"
+        preview_panel.styles.min_width = 0
+        preview_panel.styles.margin = (0, 0, 0, 0)
+        self._refresh_preview()
 
     def _palette_values(self) -> list[str]:
         value = self.query_one("#settings-palette", Input).value
