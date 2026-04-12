@@ -53,13 +53,13 @@ class PalettePreview(Static):
         foreground = self._foreground_for_color(color)
         sample = self._sample_for_color(color)
         wave_lane = self._WAVE_PATTERN * self._WAVE_LANE_WIDTH
-        row = Text(style="black on white")
-        row.append(color, style=f"{foreground} on white")
-        row.append(" ", style="black on white")
+        row = Text()
+        row.append(color, style=foreground)
+        row.append(" ")
         lane_start = len(row.plain)
-        row.append(wave_lane, style="black on white")
+        row.append(wave_lane)
         row.stylize(
-            f"bold {sample} on white",
+            f"bold {sample}",
             lane_start,
             lane_start + len(wave_lane),
         )
@@ -68,13 +68,13 @@ class PalettePreview(Static):
     def _render_preview(self) -> Text:
         text = Text()
         if not self._palette_colors:
-            text.append("No palette colors configured.", style="black on white")
+            text.append("No palette colors configured.", style="black")
             return text
 
         for index, color in enumerate(self._palette_colors):
             text.append_text(self._render_individual_row(color))
             if index < len(self._palette_colors) - 1:
-                text.append("\n", style="black on white")
+                text.append("\n")
         return text
 
     def _sync_render(self) -> None:

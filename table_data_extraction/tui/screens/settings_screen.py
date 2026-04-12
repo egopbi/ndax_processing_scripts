@@ -119,9 +119,10 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                             )
                             with Vertical(id="settings-preview-panel"):
                                 yield Label("Palette preview", id="settings-preview-title")
-                                yield PalettePreview(
-                                    palette, id="settings-palette-preview"
-                                )
+                                with Vertical(id="settings-preview-canvas"):
+                                    yield PalettePreview(
+                                        palette, id="settings-palette-preview"
+                                    )
             with Horizontal(id="settings-actions"):
                 yield Static("", classes="spacer")
                 yield Button("Save", variant="success", id="settings-save")

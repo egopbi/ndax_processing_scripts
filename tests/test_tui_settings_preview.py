@@ -197,4 +197,32 @@ def test_palette_preview_renders_only_color_rows_with_long_white_lanes() -> None
     assert lines[1].startswith("#D35400")
     assert lines[2].startswith("#128A0C")
     assert all(line.count("~") >= 12 for line in lines)
-    assert any("on white" in str(span.style) for span in rendered.spans)
+    assert any("bold" in str(span.style) for span in rendered.spans)
+
+
+def test_settings_palette_preview_uses_dedicated_white_canvas() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.press("f8")
+            await pilot.pause()
+
+            panel = app.screen.query_one("#settings-preview-panel", Vertical)
+            canvas = app.screen.query_one("#settings-preview-canvas", Vertical)
+            preview = app.screen.query_one("#settings-palette-preview", PalettePreview)
+
+            assert canvas.region.x >= panel.region.x
+            assert canvas.region.y >= panel.region.y
+            assert (
+                canvas.region.x + canvas.region.width
+                <= panel.region.x + panel.region.width
+            )
+            assert (
+                canvas.region.y + canvas.region.height
+                <= panel.region.y + panel.region.height
+            )
+            assert canvas.styles.background.rgb == (255, 255, 255)
+            assert preview.region.x >= canvas.region.x
+            assert preview.region.y >= canvas.region.y
+
+    asyncio.run(_run())

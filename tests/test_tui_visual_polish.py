@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
+from textual.scrollbar import ScrollBarRender
 from textual.css.query import NoMatches
 from textual.widgets import Select, Static, SelectionList
 
@@ -108,6 +109,55 @@ def test_mode_select_current_keeps_ascii_border_when_focused() -> None:
             assert border.left[0] == "ascii"
 
     asyncio.run(_run())
+
+
+def test_mode_select_overlay_keeps_ascii_border_when_open() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 34)) as pilot:
+            await pilot.pause()
+
+            mode_select = app.screen.query_one("#mode-select", Select)
+            mode_select.focus()
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
+
+            overlay = mode_select.query_one("SelectOverlay")
+            border = overlay.styles.border
+            assert border.top[0] == "ascii"
+            assert border.right[0] == "ascii"
+            assert border.bottom[0] == "ascii"
+            assert border.left[0] == "ascii"
+
+    asyncio.run(_run())
+
+
+def test_scrollbar_end_caps_use_ascii_glyphs() -> None:
+    _ = NdaxTuiApp()
+    rendered_vertical = ScrollBarRender.render_bar(
+        size=10,
+        virtual_size=200,
+        window_size=30,
+        position=23,
+        vertical=True,
+    )
+    rendered_horizontal = ScrollBarRender.render_bar(
+        size=10,
+        virtual_size=200,
+        window_size=30,
+        position=23,
+        vertical=False,
+    )
+
+    text = "".join(
+        segment.text
+        for segment in (
+            *rendered_vertical.segments,
+            *rendered_horizontal.segments,
+        )
+    )
+    assert all(character == "\n" or ord(character) < 128 for character in text)
 
 
 @pytest.mark.parametrize(

@@ -5,11 +5,16 @@ import threading
 from typing import Sequence
 
 from textual.app import App
+from textual.scrollbar import ScrollBarRender
 
 from table_data_extraction.tui.screens.main_screen import MainScreen
 from table_data_extraction.tui.screens.settings_screen import SettingsScreen
 from table_data_extraction.tui.settings_service import resolve_runtime_output_dir
 from table_data_extraction.tui.state import AppSessionState
+
+# Use ASCII caps to avoid unsupported Unicode glyphs on Windows scrollbars.
+ScrollBarRender.VERTICAL_BARS = ["|", "|", "|", "|", "|", "|", "|", " "]
+ScrollBarRender.HORIZONTAL_BARS = ["-", "-", "-", "-", "-", "-", "-", " "]
 
 
 class NdaxTuiApp(App[None]):
@@ -211,6 +216,14 @@ class NdaxTuiApp(App[None]):
         border: ascii #6db7ff;
     }
 
+    Select > SelectOverlay {
+        border: ascii #343a43;
+    }
+
+    Select:focus > SelectOverlay {
+        border: ascii #6db7ff;
+    }
+
     Button {
         background: #2a2f36;
         color: #e5e7eb;
@@ -256,7 +269,7 @@ class NdaxTuiApp(App[None]):
         width: 24;
         min-width: 24;
         margin-left: 1;
-        background: #20242b;
+        background: transparent;
         border: ascii #6db7ff;
         padding: 1;
         height: auto;
@@ -266,13 +279,21 @@ class NdaxTuiApp(App[None]):
         margin: 0 0 1 0;
     }
 
-    #settings-preview-panel PalettePreview {
+    #settings-preview-canvas {
         width: 1fr;
+        min-height: 8;
         background: white;
         color: black;
-        height: auto;
-        min-height: 8;
         padding: 0 1;
+    }
+
+    #settings-preview-panel PalettePreview {
+        width: 1fr;
+        background: transparent;
+        color: black;
+        height: auto;
+        min-height: 0;
+        padding: 0;
     }
 
     #settings-actions {
