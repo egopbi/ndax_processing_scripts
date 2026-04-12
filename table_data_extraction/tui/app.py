@@ -18,6 +18,7 @@ class NdaxTuiApp(App[None]):
         layout: vertical;
         background: #0b0d10;
         color: #e5e7eb;
+        padding: 0 1 1 1;
         scrollbar-background: #0f1216;
         scrollbar-background-hover: #0f1216;
         scrollbar-background-active: #0f1216;
@@ -27,59 +28,64 @@ class NdaxTuiApp(App[None]):
         scrollbar-gutter: stable;
     }
 
-    #main-shell {
+    #main-shell, #settings-shell {
+        width: 1fr;
         height: 1fr;
         min-height: 0;
     }
 
-    #main-top-bar, #settings-top-bar {
-        height: auto;
+    #main-top-bar, #settings-top-bar,
+    #main-body, #output-folder-section, #mode-section, #logs-section,
+    #main-bottom-bar, #settings-body, #settings-actions, #settings-status {
+        width: 1fr;
+        min-width: 0;
     }
 
     #main-top-bar, #settings-top-bar {
-        margin: 0 1 0 1;
-        padding: 0;
+        height: 4;
+        margin: 0;
+        padding: 0 1;
     }
 
-    #output-folder-section, #mode-section, #logs-section,
-    #plot-pane, #table-pane,
-    #plot-files-section, #plot-columns-section,
-    #table-files-section, #table-columns-section,
-    #settings-defaults-section, #settings-palette-section {
+    #main-brand, #settings-brand {
+        width: 1fr;
         height: auto;
     }
 
-    #main-top-row, #settings-top-row {
-        height: auto;
+    #main-title, #settings-title {
+        text-style: bold;
+        color: #f8fafc;
+    }
+
+    #main-subtitle, #settings-subtitle {
+        color: #8ca0b3;
+    }
+
+    #main-top-actions, #settings-top-actions, #main-bottom-actions {
         width: auto;
+        height: auto;
     }
 
-    #main-top-actions, #settings-top-actions, #main-bottom-actions, #settings-actions {
-        width: auto;
-        height: auto;
+    .section-shell, .surface-box {
+        background: #20242b;
+        border: ascii #343a43;
     }
 
     .section-shell {
-        background: #20242b;
-        border: ascii #343a43;
-        margin: 0 1 0 1;
+        margin-top: 1;
         padding: 0 1 0 1;
     }
 
     .section-title {
-        margin: 0 0 1 0;
+        margin: 0;
         color: #e5e7eb;
-    }
-
-    .surface-box {
-        background: #20242b;
-        border: ascii #343a43;
     }
 
     .attention-box {
         background: #20242b;
         border: ascii #6db7ff;
         color: #6db7ff;
+        margin-bottom: 1;
     }
 
     .path-value {
@@ -90,22 +96,32 @@ class NdaxTuiApp(App[None]):
         color: #b5bcc7;
     }
 
-    #output-folder-row {
-        height: auto;
+    #output-folder-row, #plot-file-actions, #table-file-actions,
+    #settings-palette-row, .inline-input-row {
         width: 1fr;
+        height: auto;
     }
 
-    #output-folder-row Button {
+    #output-folder-row Button, #plot-file-actions Button, #table-file-actions Button {
         width: auto;
     }
 
-    #current-output-dir, #settings-output-dir {
+    #current-output-dir {
         width: 1fr;
         height: 1;
     }
 
-    .spacer, #main-title-spacer, #settings-title-spacer {
+    .spacer {
         width: 1fr;
+    }
+
+    #main-body {
+        layout: grid;
+        grid-size: 1 4;
+        grid-rows: auto 1fr auto auto;
+        width: 1fr;
+        height: 1fr;
+        min-height: 0;
     }
 
     #workflow-tabs {
@@ -118,32 +134,43 @@ class NdaxTuiApp(App[None]):
         min-height: 0;
     }
 
-    #plot-pane, #table-pane {
+    #plot-pane, #table-pane, #settings-body, #settings-scroll {
         height: 1fr;
         min-height: 0;
     }
 
-    #plot-files-section, #table-files-section {
+    #plot-pane, #table-pane {
+        padding-right: 1;
+        scrollbar-background: #0f1216;
+        scrollbar-background-hover: #0f1216;
+        scrollbar-background-active: #0f1216;
+        scrollbar-color: #6db7ff;
+        scrollbar-color-hover: #8cc8ff;
+        scrollbar-color-active: #6db7ff;
+    }
+
+    #plot-files-section, #table-files-section,
+    #plot-columns-section, #table-columns-section,
+    #settings-defaults-section, #settings-palette-section {
         height: auto;
+        width: 1fr;
+        margin-bottom: 1;
     }
 
     #plot-columns-section, #table-columns-section {
-        height: 1fr;
         min-height: 0;
-        overflow-y: auto;
-    }
-
-    #mode-title, #files-title, #columns-title, #logs-title {
-        margin: 0 0 1 0;
     }
 
     #main-bottom-bar {
         height: auto;
-        padding: 0 1 0 1;
+        width: 1fr;
+        padding-top: 0;
     }
 
     #run-log {
-        height: 6;
+        width: 1fr;
+        height: 3;
+        min-height: 3;
         margin: 0;
         padding: 0 1;
         background: #0b0d10;
@@ -151,8 +178,8 @@ class NdaxTuiApp(App[None]):
     }
 
     Input, Select {
-        margin: 0 1 0 1;
         width: 1fr;
+        margin: 0 0 1 0;
         background: #1d2228;
         border: ascii #343a43;
         color: #e5e7eb;
@@ -185,9 +212,7 @@ class NdaxTuiApp(App[None]):
     }
 
     #settings-scroll {
-        height: 1fr;
-        min-height: 0;
-        padding: 0 1 0 1;
+        padding: 0;
         scrollbar-background: #0f1216;
         scrollbar-background-hover: #0f1216;
         scrollbar-background-active: #0f1216;
@@ -197,17 +222,7 @@ class NdaxTuiApp(App[None]):
         scrollbar-gutter: stable;
     }
 
-    #settings-body {
-        height: 1fr;
-        min-height: 0;
-    }
-
-    #settings-palette-section {
-        height: auto;
-        margin: 0 1 0 1;
-    }
-
-    #settings-palette-section Horizontal {
+    #settings-palette-row {
         height: auto;
     }
 
@@ -217,10 +232,11 @@ class NdaxTuiApp(App[None]):
 
     #settings-preview-panel {
         width: 24;
+        min-width: 24;
         margin-left: 1;
         background: #20242b;
         border: ascii #6db7ff;
-        padding: 0 1;
+        padding: 1;
         height: auto;
     }
 
@@ -236,47 +252,67 @@ class NdaxTuiApp(App[None]):
 
     #settings-actions {
         height: auto;
-        padding: 0 1 0 1;
         margin: 0;
+        padding-top: 1;
     }
 
     #settings-status {
         height: auto;
-        margin: 0 1 0 1;
-        width: 1fr;
-    }
-
-    #plot-file-actions, #table-file-actions {
-        height: auto;
-        width: auto;
-        margin-bottom: 0;
+        margin-top: 1;
     }
 
     #plot-column-helper, #table-column-helper {
-        margin: 0 1 0 1;
         height: auto;
     }
 
     #plot-column-controls, #table-column-controls {
         display: none;
-        margin: 0 1 0 1;
         min-height: 0;
-        overflow-y: auto;
     }
 
-    #plot-column-controls Horizontal, #table-column-controls Horizontal {
+    #plot-column-controls Horizontal, #table-column-controls Horizontal, .inline-input-row {
+        width: 1fr;
         height: auto;
     }
 
     .column-label {
         width: 12;
-        margin: 0 1 0 0;
+        margin: 0 1 1 0;
     }
 
     .file-list {
         background: #20242b;
-        padding: 0 1;
-        margin: 0 1 0 1;
+        padding: 0;
+        margin: 0 0 1 0;
+        width: 1fr;
+        height: auto;
+    }
+
+    .file-list-row {
+        width: 1fr;
+        height: auto;
+        margin-bottom: 1;
+    }
+
+    .file-list-path {
+        width: 1fr;
+    }
+
+    .file-list-remove {
+        width: 3;
+        min-width: 3;
+        margin: 0;
+    }
+
+    #plot-advanced > Contents, #table-advanced > Contents {
+        max-height: 10;
+        overflow-y: auto;
+        scrollbar-background: #0f1216;
+        scrollbar-background-hover: #0f1216;
+        scrollbar-background-active: #0f1216;
+        scrollbar-color: #6db7ff;
+        scrollbar-color-hover: #8cc8ff;
+        scrollbar-color-active: #6db7ff;
     }
 
     #settings-top-actions Button {
@@ -287,6 +323,8 @@ class NdaxTuiApp(App[None]):
         min-width: 10;
     }
     """
+
+    AUTO_FOCUS = ""
 
     BINDINGS = [
         ("f8", "open_settings", "Settings"),

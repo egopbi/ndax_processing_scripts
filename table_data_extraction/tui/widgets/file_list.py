@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Sequence
 
 from textual import events
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Static
 from rich.text import Text
 
@@ -15,7 +15,7 @@ FILE_LIST_ACCENT = "#6db7ff"
 FILE_LIST_SELECTED = "#b5bcc7"
 
 
-class FileList(Static):
+class FileList(Vertical):
     def __init__(
         self,
         paths: Sequence[Path] = (),

@@ -19,7 +19,9 @@ def test_app_mounts_main_screen_widgets() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
         async with app.run_test(size=(84, 40)) as pilot:
+            assert app.focused is None
             assert app.screen.query_one("#main-top-bar")
+            assert app.screen.query_one("#main-body")
             assert app.screen.query_one("#output-folder-section")
             assert app.screen.query_one("#mode-section")
             assert app.screen.query_one("#workflow-tabs")
@@ -27,18 +29,24 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#run-log", Log)
             assert app.screen.query_one("#exit-app")
             assert app.screen.query_one("#run-active")
+            assert app.screen.query_one("#main-title", Static).content == "NDAX Processor"
+            assert app.screen.query_one("#main-subtitle", Static).content == "by eeee_gorka"
             assert len(app.screen.query("#run-log")) == 1
             assert app.screen.query_one("#plot-column-helper", Static)
             assert app.screen.query_one("#table-column-helper", Static)
             assert not app.screen.query_one("#plot-column-controls").display
             assert not app.screen.query_one("#table-column-controls").display
+            assert isinstance(app.screen.query_one("#plot-pane"), VerticalScroll)
+            assert isinstance(app.screen.query_one("#table-pane"), VerticalScroll)
+            assert app.screen.query_one("#plot-x-min", Input)
+            assert app.screen.query_one("#plot-x-max", Input)
+            assert app.screen.query_one("#plot-y-min", Input)
+            assert app.screen.query_one("#plot-y-max", Input)
             assert (
                 app.screen.query_one("#current-output-dir", Static).content
                 == str(app.current_output_dir)
             )
-            assert app.screen.query_one("#main-top-bar").region.height <= 4
-            assert app.screen.query_one("#output-folder-section").region.y < 10
-            assert app.screen.query_one("#mode-section").region.y < 15
+            assert app.screen.query_one("#main-top-bar").region.height <= 5
             assert (
                 app.screen.query_one("#run-log", Log).region.y
                 + app.screen.query_one("#run-log", Log).region.height
@@ -50,32 +58,56 @@ def test_app_mounts_main_screen_widgets() -> None:
                 <= 40
             )
             assert (
-                app.screen.query_one("#plot-columns-section").region.height
-                >= app.screen.query_one("#plot-files-section").region.height
-            )
-            assert (
-                app.screen.query_one("#table-columns-section").region.height
-                >= app.screen.query_one("#table-files-section").region.height
-            )
-            assert (
-                app.screen.query_one("#plot-files", FileList).region.y
-                <= app.screen.query_one("#plot-file-actions").region.y + 4
-            )
-            assert (
-                app.screen.query_one("#plot-column-helper", Static).region.y
-                <= app.screen.query_one("#plot-files", FileList).region.y + 3
-            )
-            assert (
-                app.screen.query_one("#table-files", FileList).region.y
-                <= app.screen.query_one("#table-file-actions").region.y + 4
-            )
-            assert (
-                app.screen.query_one("#table-column-helper", Static).region.y
-                <= app.screen.query_one("#table-files", FileList).region.y + 3
+                app.screen.query_one("#main-bottom-bar").region.y
+                + app.screen.query_one("#main-bottom-bar").region.height
+                <= 40
             )
             await pilot.press("f8")
             await pilot.pause()
             assert isinstance(app.screen, SettingsScreen)
+
+    asyncio.run(_run())
+
+
+@pytest.mark.parametrize("size", [(84, 20), (70, 25)])
+def test_main_layout_keeps_run_button_visible_on_small_heights(
+    size: tuple[int, int]
+) -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=size) as pilot:
+            await pilot.pause()
+            run_button = app.screen.query_one("#run-active")
+            bottom_bar = app.screen.query_one("#main-bottom-bar")
+            assert run_button.region.x >= 0
+            assert run_button.region.y >= 0
+            assert run_button.region.x + run_button.region.width <= size[0]
+            assert run_button.region.y + run_button.region.height <= size[1]
+            assert bottom_bar.region.y + bottom_bar.region.height <= size[1]
+
+    asyncio.run(_run())
+
+
+def test_main_screen_sections_align_to_shared_grid() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 34)) as pilot:
+            await pilot.pause()
+            top = app.screen.query_one("#main-top-bar").region
+            output = app.screen.query_one("#output-folder-section").region
+            mode = app.screen.query_one("#mode-section").region
+            logs = app.screen.query_one("#logs-section").region
+            bottom = app.screen.query_one("#main-bottom-bar").region
+            left_edges = {top.x, output.x, mode.x, logs.x, bottom.x}
+            right_edges = {
+                top.x + top.width,
+                output.x + output.width,
+                mode.x + mode.width,
+                logs.x + logs.width,
+                bottom.x + bottom.width,
+            }
+            assert len(left_edges) == 1
+            assert max(right_edges) - min(right_edges) <= 2
 
     asyncio.run(_run())
 
@@ -268,9 +300,13 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
         async with app.run_test(size=(84, 40)) as pilot:
             app.push_screen(SettingsScreen())
             await pilot.pause()
+            assert app.focused is None
             assert app.screen.query_one("#settings-top-bar")
+            assert app.screen.query_one("#settings-shell")
             assert isinstance(app.screen.query_one("#settings-scroll"), VerticalScroll)
             assert app.screen.query_one("#settings-main-menu")
+            assert app.screen.query_one("#settings-title", Static).content == "NDAX Processor"
+            assert app.screen.query_one("#settings-subtitle", Static).content == "by eeee_gorka"
             assert app.screen.query_one("#settings-defaults-section")
             assert app.screen.query_one("#settings-palette-section")
             assert app.screen.query_one("#settings-scroll").region.y < 10
@@ -297,10 +333,7 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
                 + app.screen.query_one("#settings-back").region.height
                 <= 40
             )
-            assert (
-                app.screen.query_one("#settings-output-dir", Static).content
-                == str(app.current_output_dir)
-            )
+            assert len(app.screen.query("#settings-output-dir")) == 0
             preview = app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert "~~~~~~" in preview.content.plain
             assert "#1718FE" in preview.content.plain
@@ -311,6 +344,120 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
             await pilot.click("#settings-main-menu")
             await pilot.pause()
             assert isinstance(app.screen, MainScreen)
+
+    asyncio.run(_run())
+
+
+@pytest.mark.parametrize("size", [(84, 20), (70, 25)])
+def test_settings_layout_keeps_actions_visible_on_small_heights(
+    size: tuple[int, int]
+) -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=size) as pilot:
+            await pilot.press("f8")
+            await pilot.pause()
+            save_button = app.screen.query_one("#settings-save")
+            back_button = app.screen.query_one("#settings-back")
+            actions = app.screen.query_one("#settings-actions")
+            for button in (save_button, back_button):
+                assert button.region.x >= 0
+                assert button.region.y >= 0
+                assert button.region.x + button.region.width <= size[0]
+                assert button.region.y + button.region.height <= size[1]
+            assert actions.region.y + actions.region.height <= size[1]
+
+    asyncio.run(_run())
+
+
+def test_settings_sections_align_to_shared_grid() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 34)) as pilot:
+            await pilot.press("f8")
+            await pilot.pause()
+            top = app.screen.query_one("#settings-top-bar").region
+            body = app.screen.query_one("#settings-body").region
+            actions = app.screen.query_one("#settings-actions").region
+            status = app.screen.query_one("#settings-status").region
+            left_edges = {top.x, body.x, actions.x, status.x}
+            right_edges = {
+                top.x + top.width,
+                body.x + body.width,
+                actions.x + actions.width,
+                status.x + status.width,
+            }
+            assert len(left_edges) == 1
+            assert max(right_edges) - min(right_edges) <= 1
+
+    asyncio.run(_run())
+
+
+def test_advanced_scrollbar_uses_project_blue() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(90, 30)) as pilot:
+            await pilot.pause()
+            plot_advanced_contents = list(app.screen.query_one("#plot-advanced").children)[1]
+            table_advanced_contents = list(app.screen.query_one("#table-advanced").children)[1]
+            await pilot.press("f8")
+            await pilot.pause()
+            settings_scroll = app.screen.query_one("#settings-scroll")
+            for widget in (plot_advanced_contents, table_advanced_contents):
+                assert widget.styles.scrollbar_color == settings_scroll.styles.scrollbar_color
+                assert (
+                    widget.styles.scrollbar_color_hover
+                    == settings_scroll.styles.scrollbar_color_hover
+                )
+                assert (
+                    widget.styles.scrollbar_color_active
+                    == settings_scroll.styles.scrollbar_color_active
+                )
+
+    asyncio.run(_run())
+
+
+def test_parse_anchor_x_accepts_space_separator() -> None:
+    screen = MainScreen()
+    assert screen._parse_anchor_x("0.5 1.0 2.5") == (0.5, 1.0, 2.5)
+    assert screen._parse_anchor_x("0.5, 1.0 2.5") == (0.5, 1.0, 2.5)
+
+
+def test_plot_override_forces_jpg_suffix() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert app.screen._resolve_output_override(
+                "custom_name",
+                enforced_suffix=".jpg",
+            ) == app.current_output_dir / "custom_name.jpg"
+            assert app.screen._resolve_output_override(
+                "custom_name.png",
+                enforced_suffix=".jpg",
+            ) == app.current_output_dir / "custom_name.jpg"
+            assert app.screen._resolve_output_override(
+                "/tmp/custom_name.bmp",
+                enforced_suffix=".jpg",
+            ) == Path("/tmp/custom_name.jpg")
+
+    asyncio.run(_run())
+
+
+def test_plot_axis_limits_are_outside_advanced_collapsible() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            for widget_id in ("#plot-x-min", "#plot-x-max", "#plot-y-min", "#plot-y-max"):
+                widget = app.screen.query_one(widget_id, Input)
+                ancestor = widget.parent
+                ancestor_ids: list[str] = []
+                while ancestor is not None:
+                    if ancestor.id is not None:
+                        ancestor_ids.append(ancestor.id)
+                    ancestor = ancestor.parent
+                assert "plot-advanced" not in ancestor_ids
 
     asyncio.run(_run())
 
