@@ -70,7 +70,7 @@ class SettingsScreen(Screen[dict[str, object] | None]):
                             id="settings-plot-y",
                         )
                         yield Label(
-                            "CSV columns",
+                            "CSV columns, comma separated",
                             id="settings-label-csv-columns",
                         )
                         yield Input(

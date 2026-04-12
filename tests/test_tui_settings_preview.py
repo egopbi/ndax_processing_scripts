@@ -63,7 +63,10 @@ def test_settings_defaults_use_persistent_labels_without_placeholders() -> None:
             for label_id, expected_text in (
                 ("#settings-label-plot-x", "Plot X column"),
                 ("#settings-label-plot-y", "Plot Y column"),
-                ("#settings-label-csv-columns", "CSV columns"),
+                (
+                    "#settings-label-csv-columns",
+                    "CSV columns, comma separated",
+                ),
                 ("#settings-label-window-points", "Window points"),
                 ("#settings-label-zero-threshold", "Zero threshold"),
                 ("#settings-label-min-zone-points", "Minimum zone points"),
