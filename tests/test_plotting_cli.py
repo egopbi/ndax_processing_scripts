@@ -298,6 +298,72 @@ def test_cli_trims_initial_partial_cycle_for_shared_multi_file_plot(
     assert first_x_values[0] == first_x_values[1] == first_x_values[2]
 
 
+def test_cli_calls_initial_cycle_trim_resolution_when_startup_trim_is_zero(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+
+    def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
+        return _sample_dataframe()
+
+    def fake_resolve_shared_startup_tail_trim_points(*_args, **_kwargs) -> int:
+        return 0
+
+    def fake_resolve_shared_initial_cycle_trim_points(
+        _dataframes, *, startup_tail_trim_points: int
+    ) -> int:
+        captured["startup_tail_trim_points"] = startup_tail_trim_points
+        return 0
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+    ) -> Path:
+        captured["series"] = list(series)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(
+        module,
+        "resolve_shared_startup_tail_trim_points",
+        fake_resolve_shared_startup_tail_trim_points,
+    )
+    monkeypatch.setattr(
+        module,
+        "resolve_shared_initial_cycle_trim_points",
+        fake_resolve_shared_initial_cycle_trim_points,
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+    monkeypatch.setattr(
+        module,
+        "default_plot_output_path",
+        lambda **_kwargs: tmp_path / "zero_startup_trim.jpg",
+    )
+
+    exit_code = module.main([
+        "--files",
+        str(tmp_path / "sample_a.ndax"),
+        str(tmp_path / "sample_b.ndax"),
+        "--y-column",
+        "voltage",
+    ])
+
+    assert exit_code == 0
+    assert captured["startup_tail_trim_points"] == 0
+
+
 def test_cli_supports_case_insensitive_x_column_and_limits(
     monkeypatch, tmp_path: Path
 ) -> None:

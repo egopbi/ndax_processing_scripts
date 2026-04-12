@@ -132,7 +132,7 @@ def resolve_shared_startup_tail_trim_points(
 def _resolve_initial_cycle_trim_points(
     dataframe: pd.DataFrame, *, startup_tail_trim_points: int
 ) -> int:
-    if startup_tail_trim_points <= 0 or "Status" not in dataframe.columns:
+    if "Status" not in dataframe.columns:
         return 0
 
     trimmed_frame = trim_leading_rest_rows(dataframe)

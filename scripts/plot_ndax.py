@@ -139,7 +139,6 @@ def run(argv: Sequence[str] | None = None) -> Path:
     if (
         len(prepared_inputs) > 1
         and shared_startup_tail_trim_points is not None
-        and shared_startup_tail_trim_points > 0
     ):
         shared_initial_cycle_trim_points = (
             resolve_shared_initial_cycle_trim_points(

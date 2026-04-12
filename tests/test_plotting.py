@@ -314,3 +314,45 @@ def test_resolve_shared_initial_cycle_trim_points_uses_majority_value() -> None:
         )
         == 3
     )
+
+
+def test_resolve_shared_initial_cycle_trim_points_handles_zero_startup_trim() -> None:
+    candidates = [
+        pd.DataFrame({
+            "Status": [
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "Rest",
+                "Rest",
+                "CC_Chg",
+            ]
+        }),
+        pd.DataFrame({
+            "Status": [
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "Rest",
+                "Rest",
+                "CC_Chg",
+            ]
+        }),
+        pd.DataFrame({
+            "Status": [
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "Rest",
+                "Rest",
+                "CC_Chg",
+            ]
+        }),
+    ]
+
+    assert (
+        resolve_shared_initial_cycle_trim_points(
+            candidates, startup_tail_trim_points=0
+        )
+        == 4
+    )
