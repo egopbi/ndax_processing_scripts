@@ -42,28 +42,33 @@ class NdaxTuiApp(App[None]):
     }
 
     #main-top-bar, #settings-top-bar {
-        height: 4;
+        height: 5;
         margin: 0;
         padding: 0 1;
     }
 
     #main-brand, #settings-brand {
         width: 1fr;
-        height: auto;
+        height: 3;
     }
 
     #main-title, #settings-title {
         text-style: bold;
         color: #f8fafc;
+        height: 2;
+        content-align: left middle;
     }
 
     #main-subtitle, #settings-subtitle {
-        color: #8ca0b3;
+        color: #6db7ff;
+        height: 1;
+        content-align: left middle;
     }
 
     #main-top-actions, #settings-top-actions, #main-bottom-actions {
         width: auto;
-        height: auto;
+        height: 3;
+        align: right middle;
     }
 
     .section-shell, .surface-box {
@@ -90,7 +95,9 @@ class NdaxTuiApp(App[None]):
 
     .path-value {
         width: 1fr;
-        height: 1;
+        height: 3;
+        content-align: left middle;
+        padding: 0 1;
         overflow-x: hidden;
         text-overflow: ellipsis;
         color: #b5bcc7;
@@ -106,9 +113,15 @@ class NdaxTuiApp(App[None]):
         width: auto;
     }
 
+    #output-folder-row {
+        height: 3;
+        align: left middle;
+    }
+
     #current-output-dir {
         width: 1fr;
-        height: 1;
+        height: 3;
+        content-align: left middle;
     }
 
     .spacer {
@@ -245,9 +258,12 @@ class NdaxTuiApp(App[None]):
     }
 
     #settings-preview-panel PalettePreview {
+        width: 1fr;
         background: white;
         color: black;
         height: auto;
+        min-height: 8;
+        padding: 0 1;
     }
 
     #settings-actions {
@@ -282,7 +298,7 @@ class NdaxTuiApp(App[None]):
 
     .file-list {
         background: #20242b;
-        padding: 0;
+        padding: 0 2 0 0;
         margin: 0 0 1 0;
         width: 1fr;
         height: auto;
@@ -305,8 +321,7 @@ class NdaxTuiApp(App[None]):
     }
 
     #plot-advanced > Contents, #table-advanced > Contents {
-        max-height: 10;
-        overflow-y: auto;
+        overflow-y: hidden;
         scrollbar-background: #0f1216;
         scrollbar-background-hover: #0f1216;
         scrollbar-background-active: #0f1216;

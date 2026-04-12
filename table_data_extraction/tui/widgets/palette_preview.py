@@ -9,6 +9,9 @@ from textual.widgets import Static
 
 
 class PalettePreview(Static):
+    _WAVE_PATTERN = "~~~~~~"
+    _SAMPLE_LANE_WIDTH = 10
+
     def __init__(
         self,
         colors: Sequence[str] = (),
@@ -46,6 +49,12 @@ class PalettePreview(Static):
             return "black"
         return color
 
+    @classmethod
+    def _wave_lane(cls) -> str:
+        # Keep the wave centered in a fixed-width sample lane while preserving
+        # compatibility with tests that expect the line to end with tildes.
+        return cls._WAVE_PATTERN.center(cls._SAMPLE_LANE_WIDTH).rstrip()
+
     def _render_preview(self) -> Text:
         text = Text()
         if not self._palette_colors:
@@ -55,9 +64,19 @@ class PalettePreview(Static):
         for index, color in enumerate(self._palette_colors):
             foreground = self._foreground_for_color(color)
             sample = self._sample_for_color(color)
-            text.append(color, style=f"{foreground} on white")
-            text.append(" ", style="black on white")
-            text.append("~~~~~~", style=f"bold {sample} on white")
+            wave_lane = self._wave_lane()
+            wave_start = wave_lane.index(self._WAVE_PATTERN)
+            row = Text(style="black on white")
+            row.append(color, style=f"{foreground} on white")
+            row.append(" ", style="black on white")
+            lane_start = len(row.plain)
+            row.append(wave_lane, style="black on white")
+            row.stylize(
+                f"bold {sample} on white",
+                lane_start + wave_start,
+                lane_start + wave_start + len(self._WAVE_PATTERN),
+            )
+            text.append_text(row)
             if index < len(self._palette_colors) - 1:
                 text.append("\n", style="black on white")
         return text
