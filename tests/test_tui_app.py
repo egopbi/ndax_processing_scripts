@@ -374,13 +374,12 @@ def test_settings_screen_shows_palette_preview_and_inputs() -> None:
                 <= 40
             )
             assert len(app.screen.query("#settings-output-dir")) == 0
+            canvas = app.screen.query_one("#settings-preview-canvas")
             preview = app.screen.query_one("#settings-palette-preview", PalettePreview)
             assert "~~~~~~" in preview.content.plain
             assert "#1718FE" in preview.content.plain
-            assert any(
-                "#1718FE" in str(span.style) and "on white" in str(span.style)
-                for span in preview.content.spans
-            )
+            assert canvas.styles.background.rgb == (255, 255, 255)
+            assert any("#1718FE" in str(span.style) for span in preview.content.spans)
             await pilot.click("#settings-main-menu")
             await pilot.pause()
             assert isinstance(app.screen, MainScreen)
