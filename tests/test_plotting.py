@@ -8,6 +8,7 @@ from table_data_extraction.extrema import _is_local_maximum, _is_local_minimum
 from table_data_extraction.plotting import (
     prepare_plot_frame,
     resolve_axis_label,
+    resolve_shared_initial_cycle_trim_points,
     resolve_shared_startup_tail_trim_points,
     save_plot,
     trim_leading_rest_rows,
@@ -266,4 +267,50 @@ def test_resolve_shared_startup_tail_trim_points_uses_maximum_on_tie() -> None:
     assert (
         resolve_shared_startup_tail_trim_points(candidates, y_col="Voltage")
         == 7
+    )
+
+
+def test_resolve_shared_initial_cycle_trim_points_uses_majority_value() -> None:
+    candidates = [
+        pd.DataFrame({
+            "Status": [
+                "Rest",
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "Rest",
+                "Rest",
+                "CC_Chg",
+            ]
+        }),
+        pd.DataFrame({
+            "Status": [
+                "Rest",
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "Rest",
+                "Rest",
+                "CC_Chg",
+            ]
+        }),
+        pd.DataFrame({
+            "Status": [
+                "Rest",
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "CC_DChg",
+                "Rest",
+                "Rest",
+                "CC_Chg",
+            ]
+        }),
+    ]
+
+    assert (
+        resolve_shared_initial_cycle_trim_points(
+            candidates, startup_tail_trim_points=1
+        )
+        == 3
     )

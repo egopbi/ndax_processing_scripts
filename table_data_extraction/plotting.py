@@ -129,6 +129,67 @@ def resolve_shared_startup_tail_trim_points(
     return max(most_likely_candidates)
 
 
+def _resolve_initial_cycle_trim_points(
+    dataframe: pd.DataFrame, *, startup_tail_trim_points: int
+) -> int:
+    if startup_tail_trim_points <= 0 or "Status" not in dataframe.columns:
+        return 0
+
+    trimmed_frame = trim_leading_rest_rows(dataframe)
+    if startup_tail_trim_points >= len(trimmed_frame):
+        return 0
+
+    statuses = (
+        trimmed_frame.iloc[startup_tail_trim_points:]["Status"].to_numpy(
+            copy=False
+        )
+    )
+    position = 0
+    while position < len(statuses):
+        if statuses[position] != "Rest":
+            position += 1
+            continue
+
+        rest_block_end = position
+        while (
+            rest_block_end + 1 < len(statuses)
+            and statuses[rest_block_end + 1] == "Rest"
+        ):
+            rest_block_end += 1
+
+        if rest_block_end + 1 < len(statuses):
+            return rest_block_end
+
+        return 0
+
+    return 0
+
+
+def resolve_shared_initial_cycle_trim_points(
+    dataframes: Sequence[pd.DataFrame], *, startup_tail_trim_points: int
+) -> int:
+    candidates = [
+        _resolve_initial_cycle_trim_points(
+            dataframe, startup_tail_trim_points=startup_tail_trim_points
+        )
+        for dataframe in dataframes
+    ]
+    if not candidates:
+        return 0
+
+    counts = Counter(candidates)
+    highest_frequency = max(counts.values())
+    most_likely_candidates = [
+        points
+        for points, frequency in counts.items()
+        if frequency == highest_frequency
+    ]
+    if len(most_likely_candidates) == 1:
+        return most_likely_candidates[0]
+
+    return max(most_likely_candidates)
+
+
 def _trim_leading_startup_tail(
     dataframe: pd.DataFrame,
     *,
@@ -161,6 +222,7 @@ def prepare_plot_frame(
     x_col: str,
     y_col: str,
     startup_tail_trim_points: int | None = None,
+    initial_cycle_trim_points: int | None = None,
 ) -> tuple[pd.DataFrame, str, str]:
     _ensure_required_columns(dataframe, [x_col, y_col])
 
@@ -169,6 +231,8 @@ def prepare_plot_frame(
         y_col=y_col,
         trim_points=startup_tail_trim_points,
     )
+    if initial_cycle_trim_points is not None and initial_cycle_trim_points > 0:
+        trimmed_frame = trimmed_frame.iloc[initial_cycle_trim_points:].copy()
     has_usable_timestamps = timestamps_are_usable(trimmed_frame)
     source_frame = trimmed_frame
     if not source_frame.empty:

@@ -10,6 +10,7 @@ from table_data_extraction.plotting import PlotSeries, save_multi_series_plot
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT_DIR / "scripts" / "plot_ndax.py"
+EXAMPLES_DIR = ROOT_DIR / "examples"
 
 
 def _load_plot_ndax_module():
@@ -239,6 +240,62 @@ def test_cli_defaults_labels_and_output_path(
 
     captured_stdout = capsys.readouterr().out
     assert "Saved plot to" in captured_stdout
+
+
+def test_cli_trims_initial_partial_cycle_for_shared_multi_file_plot(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+    ) -> Path:
+        captured["series"] = list(series)
+        captured["x_label"] = x_label
+        captured["y_label"] = y_label
+        captured["output_path"] = output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    def fake_default_plot_output_path(
+        *,
+        resolved_x_column: str,
+        resolved_y_column: str,
+        source_paths,
+    ) -> Path:
+        return tmp_path / "shared_trim_plot.jpg"
+
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+    monkeypatch.setattr(
+        module, "default_plot_output_path", fake_default_plot_output_path
+    )
+
+    exit_code = module.main([
+        "--files",
+        str(EXAMPLES_DIR / "example5_5.ndax"),
+        str(EXAMPLES_DIR / "example6_6.ndax"),
+        str(EXAMPLES_DIR / "example7_7.ndax"),
+        "--y-column",
+        "voltage",
+    ])
+
+    assert exit_code == 0
+    series = captured["series"]
+    assert series is not None
+    first_y_values = [round(line.frame["__plot_y__"].iloc[0], 1) for line in series]
+    first_x_values = [round(line.frame["__plot_x__"].iloc[0], 6) for line in series]
+    assert first_y_values == [54.4, 46.6, 53.8]
+    assert first_x_values[0] == first_x_values[1] == first_x_values[2]
 
 
 def test_cli_supports_case_insensitive_x_column_and_limits(

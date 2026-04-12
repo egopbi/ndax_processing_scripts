@@ -15,6 +15,7 @@ from table_data_extraction.plotting import (
     AxisLimits,
     PlotSeries,
     prepare_plot_frame,
+    resolve_shared_initial_cycle_trim_points,
     resolve_plot_columns,
     resolve_shared_startup_tail_trim_points,
     save_multi_series_plot,
@@ -134,12 +135,26 @@ def run(argv: Sequence[str] | None = None) -> Path:
             )
         )
 
+    shared_initial_cycle_trim_points: int | None = None
+    if (
+        len(prepared_inputs) > 1
+        and shared_startup_tail_trim_points is not None
+        and shared_startup_tail_trim_points > 0
+    ):
+        shared_initial_cycle_trim_points = (
+            resolve_shared_initial_cycle_trim_points(
+                [dataframe for dataframe, _ in prepared_inputs],
+                startup_tail_trim_points=shared_startup_tail_trim_points,
+            )
+        )
+
     for dataframe, label in prepared_inputs:
         plot_frame, current_x_label, current_y_label = prepare_plot_frame(
             dataframe,
             x_col=resolved_x_column,
             y_col=resolved_y_column,
             startup_tail_trim_points=shared_startup_tail_trim_points,
+            initial_cycle_trim_points=shared_initial_cycle_trim_points,
         )
         lines.append(PlotSeries(label=label, frame=plot_frame))
         if x_label is None:
