@@ -7,6 +7,7 @@ from table_data_extraction import config as config_module
 from table_data_extraction import project_config as project_config_module
 from table_data_extraction.config import OUTPUT_DIR
 from table_data_extraction.output_paths import (
+    default_convert_output_path,
     default_plot_output_path,
     default_table_output_path,
     sanitize_name,
@@ -146,6 +147,31 @@ def test_default_table_output_path_supports_overridden_output_dir(
 
     assert output_path.parent == override_dir
     assert output_path.name == "table_voltage_2026-03-29_16-07-22_example4.csv"
+
+
+def test_default_convert_output_path_uses_source_stem_in_default_output_dir() -> (
+    None
+):
+    output_path = default_convert_output_path(
+        source_path="examples/example4_4.ndax"
+    )
+
+    assert output_path.parent == OUTPUT_DIR
+    assert output_path.name == "example4_4.csv"
+
+
+def test_default_convert_output_path_supports_overridden_output_dir(
+    tmp_path: Path,
+) -> None:
+    override_dir = tmp_path / "session-output"
+
+    output_path = default_convert_output_path(
+        source_path="examples/example4_4.ndax",
+        output_dir=override_dir,
+    )
+
+    assert output_path.parent == override_dir
+    assert output_path.name == "example4_4.csv"
 
 
 def test_default_output_paths_use_refreshed_runtime_output_dir(

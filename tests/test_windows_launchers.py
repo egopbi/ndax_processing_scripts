@@ -50,6 +50,16 @@ def test_build_comparison_table_cmd_proxies_to_project_venv_python() -> None:
     assert "setup_windows.cmd" in content
 
 
+def test_convert_ndax_cmd_proxies_to_project_venv_python() -> None:
+    content = _read_root_file("convert_ndax.cmd").lower()
+
+    assert "%~dp0" in content
+    assert ".venv\\scripts\\python.exe" in content
+    assert "scripts\\convert_ndax.py" in content
+    assert "%*" in content
+    assert "setup_windows.cmd" in content
+
+
 def test_readme_is_windows_only_and_uses_helper_scripts() -> None:
     content = _read_root_file("README.md")
 
