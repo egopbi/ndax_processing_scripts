@@ -44,6 +44,37 @@ def test_build_plot_command_uses_overridden_output_dir(tmp_path: Path) -> None:
     assert command.argv[-1] == str(command.output_path)
 
 
+def test_build_plot_command_includes_separate_flag() -> None:
+    command = build_plot_command(
+        PlotRunConfig(
+            files=(Path("examples/example1_1.ndax"),),
+            y_column="Voltage",
+            separate=True,
+        ),
+        python_executable="python-test",
+    )
+
+    assert command.mode == "plot"
+    assert "--separate" in command.argv
+
+
+def test_build_plot_command_drops_output_when_separate_enabled(tmp_path: Path) -> None:
+    command = build_plot_command(
+        PlotRunConfig(
+            files=(Path("examples/example1_1.ndax"),),
+            y_column="Voltage",
+            separate=True,
+            output_path=tmp_path / "custom.jpg",
+        ),
+        output_dir=tmp_path,
+        python_executable="python-test",
+    )
+
+    assert "--separate" in command.argv
+    assert "--output" not in command.argv
+    assert command.output_path is None
+
+
 def test_build_table_command_includes_anchor_x_and_labels(tmp_path: Path) -> None:
     command = build_table_command(
         TableRunConfig(

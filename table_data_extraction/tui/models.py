@@ -17,6 +17,7 @@ class PlotRunConfig:
     x_max: float | None = None
     y_min: float | None = None
     y_max: float | None = None
+    separate: bool = False
     output_path: Path | None = None
 
 

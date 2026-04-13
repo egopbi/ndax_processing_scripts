@@ -89,7 +89,9 @@ def build_plot_command(
     files = _normalize_paths(config.files)
     labels = _normalize_labels(files, config.labels)
     output_path = config.output_path
-    if output_path is None and output_dir is not None:
+    if config.separate:
+        output_path = None
+    elif output_path is None and output_dir is not None:
         output_path = default_plot_output_path(
             source_paths=files,
             resolved_x_column=config.x_column,
@@ -115,6 +117,8 @@ def build_plot_command(
         argv.extend(["--y-min", str(config.y_min)])
     if config.y_max is not None:
         argv.extend(["--y-max", str(config.y_max)])
+    if config.separate:
+        argv.append("--separate")
     if output_path is not None:
         argv.extend(["--output", str(output_path)])
 

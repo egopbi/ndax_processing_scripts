@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from textual.containers import VerticalScroll
 from textual.css.query import NoMatches
-from textual.widgets import Button, Input, Select, Static
+from textual.widgets import Button, Checkbox, Input, Select, Static
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.models import CompletedCommand
@@ -45,6 +45,7 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#plot-x-max", Input)
             assert app.screen.query_one("#plot-y-min", Input)
             assert app.screen.query_one("#plot-y-max", Input)
+            assert app.screen.query_one("#plot-separate", Checkbox)
             assert (
                 app.screen.query_one("#current-output-dir", Static).content
                 == str(app.current_output_dir)
@@ -568,6 +569,82 @@ def test_convert_mode_builds_command_with_selected_columns(monkeypatch) -> None:
     asyncio.run(_run())
 
 
+def test_plot_mode_builds_separate_command_without_output_override(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "table_data_extraction.tui.screens.main_screen.list_columns",
+        lambda path: ["Voltage", "Time", "Current(mA)"],
+    )
+
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
+            shared_files.set_paths([Path("plot.ndax")])
+            await pilot.pause()
+
+            override_input = app.screen.query_one("#plot-output-override", Input)
+            separate_checkbox = app.screen.query_one("#plot-separate", Checkbox)
+            override_input.value = "custom_name"
+
+            base_command = app.screen._build_active_command()
+            assert "--separate" not in base_command.argv
+            assert "--output" in base_command.argv
+            assert base_command.output_path == app.current_output_dir / "custom_name.jpg"
+
+            main_scroll.scroll_to_widget(
+                separate_checkbox,
+                animate=False,
+                immediate=True,
+            )
+            await pilot.pause()
+            await pilot.click("#plot-separate")
+            await pilot.pause()
+            assert separate_checkbox.value is True
+
+            separate_command = app.screen._build_active_command()
+            assert "--separate" in separate_command.argv
+            assert "--output" not in separate_command.argv
+            assert separate_command.output_path is None
+
+    asyncio.run(_run())
+
+
+def test_plot_output_override_is_dimmed_and_disabled_when_separate_enabled() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.pause()
+
+            main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
+            separate_checkbox = app.screen.query_one("#plot-separate", Checkbox)
+            override_input = app.screen.query_one("#plot-output-override", Input)
+            override_section = app.screen.query_one("#plot-output-override-section")
+            assert not override_input.disabled
+            assert "is-disabled" not in set(override_section.classes)
+
+            main_scroll.scroll_to_widget(
+                separate_checkbox,
+                animate=False,
+                immediate=True,
+            )
+            await pilot.pause()
+            await pilot.click("#plot-separate")
+            await pilot.pause()
+
+            assert override_input.disabled
+            assert "is-disabled" in set(override_section.classes)
+            assert override_section.styles.background.rgb == (26, 30, 36)
+
+            await pilot.click("#plot-separate")
+            await pilot.pause()
+
+            assert not override_input.disabled
+            assert "is-disabled" not in set(override_section.classes)
+
+    asyncio.run(_run())
+
+
 def test_output_override_inputs_live_in_main_parameters_forms() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
@@ -575,9 +652,11 @@ def test_output_override_inputs_live_in_main_parameters_forms() -> None:
             await pilot.pause()
             plot_override = app.screen.query_one("#plot-output-override", Input)
             plot_y_max = app.screen.query_one("#plot-y-max", Input)
+            plot_separate = app.screen.query_one("#plot-separate", Checkbox)
             plot_more = app.screen.query_one("#plot-more-options", Button)
 
-            assert plot_override.region.y > plot_y_max.region.y
+            assert plot_separate.region.y > plot_y_max.region.y
+            assert plot_override.region.y > plot_separate.region.y
             assert plot_override.region.y < plot_more.region.y
 
             app.screen.query_one("#mode-select", Select).value = "table"

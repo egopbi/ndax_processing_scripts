@@ -8,6 +8,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import (
     Button,
+    Checkbox,
     ContentSwitcher,
     Input,
     Label,
@@ -157,10 +158,18 @@ class MainScreen(Screen[None]):
                                 with Horizontal(classes="inline-input-row"):
                                     yield Input(placeholder="Y min", id="plot-y-min")
                                     yield Input(placeholder="Y max", id="plot-y-max")
-                                yield Input(
-                                    placeholder="Output filename override",
-                                    id="plot-output-override",
+                                yield Checkbox(
+                                    "Separate",
+                                    id="plot-separate",
                                 )
+                                with Vertical(
+                                    id="plot-output-override-section",
+                                    classes="plot-output-override-section",
+                                ):
+                                    yield Input(
+                                        placeholder="Output filename override",
+                                        id="plot-output-override",
+                                    )
                                 with Horizontal(classes="secondary-actions"):
                                     yield Button(
                                         "More Options...",
@@ -521,6 +530,19 @@ class MainScreen(Screen[None]):
             raise ValueError("Select at least one NDAX file first.")
         return self.active_file_list.paths[0]
 
+    def _plot_separate_enabled(self) -> bool:
+        return self.query_one("#plot-separate", Checkbox).value
+
+    def _sync_plot_output_override_state(self) -> None:
+        separate_enabled = self._plot_separate_enabled()
+        override_input = self.query_one("#plot-output-override", Input)
+        override_section = self.query_one("#plot-output-override-section", Vertical)
+        override_input.disabled = separate_enabled
+        if separate_enabled:
+            override_section.add_class("is-disabled")
+        else:
+            override_section.remove_class("is-disabled")
+
     def _build_active_command(self):
         mode = self.current_mode
         files = self.active_file_list.paths
@@ -558,6 +580,7 @@ class MainScreen(Screen[None]):
             )
 
         advanced = self._advanced_state["plot"]
+        separate = self._plot_separate_enabled()
         return build_plot_command(
             PlotRunConfig(
                 files=files,
@@ -582,9 +605,14 @@ class MainScreen(Screen[None]):
                 y_max=self._parse_optional_float(
                     self.query_one("#plot-y-max", Input).value
                 ),
-                output_path=self._resolve_output_override(
-                    self._output_override_input_for_mode("plot").value,
-                    enforced_suffix=".jpg",
+                separate=separate,
+                output_path=(
+                    None
+                    if separate
+                    else self._resolve_output_override(
+                        self._output_override_input_for_mode("plot").value,
+                        enforced_suffix=".jpg",
+                    )
                 ),
             ),
             output_dir=self.app.current_output_dir,
@@ -775,11 +803,16 @@ class MainScreen(Screen[None]):
         file_list.paths_changed_callback = self._on_file_list_paths_changed
         self._on_file_list_paths_changed(file_list.paths)
         self._sync_mode_form()
+        self._sync_plot_output_override_state()
 
     def on_select_changed(self, event: Select.Changed) -> None:
         if event.select.id == "mode-select":
             self._sync_mode_form()
             self._on_file_list_paths_changed(self.active_file_list.paths)
+
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        if event.checkbox.id == "plot-separate":
+            self._sync_plot_output_override_state()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
