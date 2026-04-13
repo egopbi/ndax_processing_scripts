@@ -70,9 +70,12 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
         r'.\convert_ndax.cmd --files examples\example1_1.ndax --columns Voltage "Current(mA)"'
         in readme
     )
+    width_cli_line = next(line for line in plot_cli_lines if "--output-width-px" in line)
+    height_cli_line = next(line for line in plot_cli_lines if "--output-height-px" in line)
     ui_contract_line = next(
         line for line in ui_lines if "Separate" in line and "Output filename override" in line
     )
+    plot_options_line = next(line for line in ui_lines if "More Options" in line)
     assert ui_contract_line.index("Separate") < ui_contract_line.index("Output filename override")
 
     separate_cli_line = next(line for line in plot_cli_lines if "--separate" in line)
@@ -89,6 +92,13 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
     assert "--output" in output_cli_line
     assert "stem" in contract_line
     assert "Rest" in contract_line
+    assert "1500" in readme
+    assert "900" in readme
+    assert "300" in readme
+    assert "6000" in readme
+    assert "--output-width-px" in width_cli_line
+    assert "--output-height-px" in height_cli_line
+    assert "More Options" in plot_options_line
     assert r"data\sample.ndax" not in readme
     assert "в первой строке заголовка" not in readme
 
@@ -109,6 +119,8 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
     assert "scripts/convert_ndax.py" in project_overview
     assert "project_config.yaml" in project_overview
     assert "table_data_extraction.project_config" in project_overview
+    assert "output-width-px" in project_overview
+    assert "output-height-px" in project_overview
     assert "scripts/plot_ndax.py" in architecture
     assert "project_config.yaml" in architecture
     assert "table_data_extraction.project_config" in architecture
@@ -131,9 +143,14 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
     combined_line = next(line for line in plot_data_flow_lines if "one image per input file" in line)
     assert "shared preprocessing" in data_flow_line
     assert "one image per input file" in combined_line
+    assert "figure size validation" in architecture
+    assert "1500x900" in architecture
+    assert "300..6000" in architecture
+    assert "More Options" in architecture
     assert "incompatible with filename override / `--output`" in architecture
     assert "shared batch preprocessing reused by plot outputs" in architecture
     assert "Public plot docs must also describe the `--separate` mode" in development_notes
+    assert "pixel-based output image size controls" in development_notes
 
 
 def test_legacy_public_files_are_removed() -> None:

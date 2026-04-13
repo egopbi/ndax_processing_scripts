@@ -25,6 +25,7 @@ If a change adds or renames config keys, update:
 - Keep the canonical technical docs compact and durable enough for future coding agents to recover the current entrypoints and config model quickly.
 - Public docs must describe all current user workflows: plot, comparison table, and convert.
 - Public plot docs must also describe the `--separate` mode, including stem-based output naming, incompatibility with `--output`, and shared batch preprocessing.
+- Public plot docs must also describe pixel-based output image size controls, their `300..6000` px bounds, the `1500x900` default, and their placement in TUI `Plot` -> `More Options`.
 - Convert workflow docs must preserve the contract: selected-column CSV slices, automatic `Time` inclusion, one output CSV per input NDAX file, and no filename override in TUI convert mode.
 
 ## Focused Verification

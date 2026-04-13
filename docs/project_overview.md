@@ -27,6 +27,10 @@ Convert mode behavior contract:
 
 Plot mode behavior contract:
 
+- output image size is controlled by `--output-width-px` and `--output-height-px`
+- the default size is `1500x900` px
+- both size parameters accept only `300..6000` px
+- the same size controls are available in TUI `Plot` -> `More Options`
 - `--separate` switches plot output from one combined JPG to one JPG per input `.ndax`
 - separate plot outputs are named from the source file stem, matching the convert-mode naming model
 - `--separate` is mutually exclusive with `--output` / filename override
