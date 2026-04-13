@@ -5,7 +5,14 @@ import pandas as pd
 import pytest
 
 from table_data_extraction.plot_style import resolve_plot_colors
-from table_data_extraction.plotting import PlotSeries, save_multi_series_plot
+from table_data_extraction.plotting import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+    MAX_PLOT_OUTPUT_DIMENSION_PX,
+    MIN_PLOT_OUTPUT_DIMENSION_PX,
+    PlotSeries,
+    save_multi_series_plot,
+)
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -184,12 +191,17 @@ def test_cli_defaults_labels_and_output_path(
         output_path: Path,
         x_limits,
         y_limits,
+        output_width_px=None,
+        output_height_px=None,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
         captured["y_label"] = y_label
         captured["x_limits"] = x_limits
         captured["y_limits"] = y_limits
+        captured["output_width_px"] = output_width_px
+        captured["output_height_px"] = output_height_px
         captured["output_path"] = output_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(b"jpg")
@@ -225,6 +237,8 @@ def test_cli_defaults_labels_and_output_path(
     assert captured["y_label"] == "Voltage (mV)"
     assert captured["x_limits"] is None
     assert captured["y_limits"] is None
+    assert captured["output_width_px"] == DEFAULT_PLOT_OUTPUT_WIDTH_PX
+    assert captured["output_height_px"] == DEFAULT_PLOT_OUTPUT_HEIGHT_PX
     assert captured["output_path"] == tmp_path / "auto_plot.jpg"
 
     series = captured["series"]
@@ -240,6 +254,100 @@ def test_cli_defaults_labels_and_output_path(
 
     captured_stdout = capsys.readouterr().out
     assert "Saved plot to" in captured_stdout
+
+
+def test_cli_supports_custom_output_dimensions(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+
+    def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
+        return _sample_dataframe()
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+        output_width_px=None,
+        output_height_px=None,
+        **_kwargs,
+    ) -> Path:
+        captured["output_width_px"] = output_width_px
+        captured["output_height_px"] = output_height_px
+        captured["output_path"] = output_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+
+    output_file = tmp_path / "plot.jpg"
+    exit_code = module.main([
+        "--files",
+        str(tmp_path / "sample.ndax"),
+        "--y-column",
+        "voltage",
+        "--output",
+        str(output_file),
+        "--output-width-px",
+        "1800",
+        "--output-height-px",
+        "1200",
+    ])
+
+    assert exit_code == 0
+    assert captured["output_width_px"] == 1800
+    assert captured["output_height_px"] == 1200
+    assert captured["output_path"] == output_file
+
+
+@pytest.mark.parametrize(
+    ("flag", "value", "match"),
+    [
+        (
+            "--output-width-px",
+            MIN_PLOT_OUTPUT_DIMENSION_PX - 1,
+            rf"Output width must be between {MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} pixels\.",
+        ),
+        (
+            "--output-height-px",
+            MAX_PLOT_OUTPUT_DIMENSION_PX + 1,
+            rf"Output height must be between {MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} pixels\.",
+        ),
+    ],
+)
+def test_cli_rejects_unreasonable_output_dimensions(
+    flag: str,
+    value: int,
+    match: str,
+    capsys,
+) -> None:
+    module = _load_plot_ndax_module()
+
+    exit_code = module.main([
+        "--files",
+        "sample.ndax",
+        "--y-column",
+        "voltage",
+        "--output",
+        "plot.jpg",
+        flag,
+        str(value),
+    ])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert match.replace(r"\.", ".").casefold() in captured.err.casefold()
 
 
 def test_cli_separate_mode_writes_one_plot_per_input_file(
@@ -268,6 +376,7 @@ def test_cli_separate_mode_writes_one_plot_per_input_file(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured.setdefault("save_calls", []).append((list(series), output_path))
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -378,6 +487,7 @@ def test_cli_separate_mode_preserves_shared_trim_for_all_outputs(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         assert len(series) == 1
         captured["first_x_values"].append(
@@ -442,6 +552,7 @@ def test_cli_trims_initial_partial_cycle_for_shared_multi_file_plot(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
@@ -510,6 +621,7 @@ def test_cli_calls_initial_cycle_trim_resolution_when_startup_trim_is_zero(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -572,6 +684,7 @@ def test_cli_supports_case_insensitive_x_column_and_limits(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
@@ -704,6 +817,7 @@ def test_cli_time_falls_back_to_raw_seconds_when_timestamp_missing(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
@@ -765,6 +879,7 @@ def test_cli_time_falls_back_to_raw_seconds_when_timestamp_malformed(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
@@ -818,6 +933,7 @@ def test_cli_trims_long_startup_tail_before_plotting(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
@@ -876,6 +992,7 @@ def test_cli_applies_shared_majority_startup_trim_for_multi_file_plot(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         captured["x_label"] = x_label
@@ -940,6 +1057,7 @@ def test_cli_applies_largest_startup_trim_when_candidates_tie(
         output_path: Path,
         x_limits,
         y_limits,
+        **_kwargs,
     ) -> Path:
         captured["series"] = list(series)
         output_path.parent.mkdir(parents=True, exist_ok=True)
