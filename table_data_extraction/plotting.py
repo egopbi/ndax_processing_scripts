@@ -32,6 +32,11 @@ from .time_utils import (
 
 AxisLimits = tuple[float | None, float | None] | None
 STARTUP_TAIL_MIN_POINTS = 5
+PLOT_OUTPUT_DPI = 150
+DEFAULT_PLOT_OUTPUT_WIDTH_PX = 1500
+DEFAULT_PLOT_OUTPUT_HEIGHT_PX = 900
+MIN_PLOT_OUTPUT_DIMENSION_PX = 300
+MAX_PLOT_OUTPUT_DIMENSION_PX = 6000
 
 
 @dataclass(frozen=True)
@@ -310,6 +315,46 @@ def _set_axis_limits(axis, x_limits: AxisLimits, y_limits: AxisLimits) -> None:
         axis.set_ylim(bottom=y_lower, top=y_upper)
 
 
+def _validate_plot_output_dimension(
+    value_px: int, *, dimension_name: str
+) -> int:
+    if not (
+        MIN_PLOT_OUTPUT_DIMENSION_PX
+        <= value_px
+        <= MAX_PLOT_OUTPUT_DIMENSION_PX
+    ):
+        raise ValueError(
+            f"{dimension_name} must be between "
+            f"{MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} "
+            f"pixels."
+        )
+    return value_px
+
+
+def resolve_plot_output_dimensions(
+    *,
+    output_width_px: int | None = None,
+    output_height_px: int | None = None,
+) -> tuple[int, int]:
+    resolved_width_px = (
+        DEFAULT_PLOT_OUTPUT_WIDTH_PX
+        if output_width_px is None
+        else output_width_px
+    )
+    resolved_height_px = (
+        DEFAULT_PLOT_OUTPUT_HEIGHT_PX
+        if output_height_px is None
+        else output_height_px
+    )
+    _validate_plot_output_dimension(
+        resolved_width_px, dimension_name="Output width"
+    )
+    _validate_plot_output_dimension(
+        resolved_height_px, dimension_name="Output height"
+    )
+    return resolved_width_px, resolved_height_px
+
+
 def save_multi_series_plot(
     series: Sequence[PlotSeries],
     *,
@@ -318,6 +363,8 @@ def save_multi_series_plot(
     output_path: Path,
     x_limits: AxisLimits,
     y_limits: AxisLimits,
+    output_width_px: int | None = None,
+    output_height_px: int | None = None,
 ) -> Path:
     all_series = list(series)
     if not all_series:
@@ -326,11 +373,20 @@ def save_multi_series_plot(
     normalized_x_limits = _normalize_limits(x_limits)
     normalized_y_limits = _normalize_limits(y_limits)
     palette = resolve_plot_colors(len(all_series))
+    resolved_width_px, resolved_height_px = resolve_plot_output_dimensions(
+        output_width_px=output_width_px,
+        output_height_px=output_height_px,
+    )
 
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    figure, axis = plt.subplots(figsize=(10, 6))
+    figure, axis = plt.subplots(
+        figsize=(
+            resolved_width_px / PLOT_OUTPUT_DPI,
+            resolved_height_px / PLOT_OUTPUT_DPI,
+        )
+    )
     plotted_series_count = 0
     for index, line in enumerate(all_series):
         limited_frame = _apply_limits(
@@ -359,7 +415,7 @@ def save_multi_series_plot(
     axis.grid(True, which="major", alpha=0.3, linewidth=0.6)
 
     figure.tight_layout()
-    figure.savefig(output_file, format="jpg", dpi=150)
+    figure.savefig(output_file, format="jpg", dpi=PLOT_OUTPUT_DPI)
     plt.close(figure)
     return output_file
 
@@ -373,6 +429,8 @@ def save_plot(
     series_label: str,
     x_limits: AxisLimits,
     y_limits: AxisLimits,
+    output_width_px: int | None = None,
+    output_height_px: int | None = None,
 ) -> Path:
     plot_frame, x_label, y_label = prepare_plot_frame(
         dataframe,
@@ -386,4 +444,6 @@ def save_plot(
         output_path=output_path,
         x_limits=x_limits,
         y_limits=y_limits,
+        output_width_px=output_width_px,
+        output_height_px=output_height_px,
     )

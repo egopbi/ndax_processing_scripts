@@ -1,11 +1,18 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from table_data_extraction._test_support import sample_ndax_path
 from table_data_extraction.config import PLOT_X_COLUMN, PLOT_Y_COLUMN
 from table_data_extraction.extrema import _is_local_maximum, _is_local_minimum
+import table_data_extraction.plotting as plotting_module
 from table_data_extraction.plotting import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+    MAX_PLOT_OUTPUT_DIMENSION_PX,
+    MIN_PLOT_OUTPUT_DIMENSION_PX,
+    PLOT_OUTPUT_DPI,
     prepare_plot_frame,
     resolve_axis_label,
     resolve_shared_initial_cycle_trim_points,
@@ -36,7 +43,26 @@ def _sample_dataframe_with_first_extremum_at(position: int) -> pd.DataFrame:
     })
 
 
-def test_save_plot_creates_jpg_file(tmp_path: Path):
+def test_save_plot_uses_default_dimensions(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    captured: dict[str, object] = {}
+    original_subplots = plotting_module.plt.subplots
+
+    def wrapped_subplots(*args, **kwargs):
+        figure, axis = original_subplots(*args, **kwargs)
+        captured["figsize"] = kwargs.get("figsize")
+        original_savefig = figure.savefig
+
+        def wrapped_savefig(*savefig_args, **savefig_kwargs):
+            captured["savefig_kwargs"] = dict(savefig_kwargs)
+            return original_savefig(*savefig_args, **savefig_kwargs)
+
+        figure.savefig = wrapped_savefig
+        return figure, axis
+
+    monkeypatch.setattr(plotting_module.plt, "subplots", wrapped_subplots)
+
     dataframe = load_ndax_dataframe(sample_ndax_path())
     output_dir = tmp_path / "plots with spaces"
     output_path = output_dir / "plot.jpg"
@@ -51,9 +77,142 @@ def test_save_plot_creates_jpg_file(tmp_path: Path):
         y_limits=None,
     )
 
+    assert captured["figsize"] == (
+        DEFAULT_PLOT_OUTPUT_WIDTH_PX / PLOT_OUTPUT_DPI,
+        DEFAULT_PLOT_OUTPUT_HEIGHT_PX / PLOT_OUTPUT_DPI,
+    )
+    assert captured["savefig_kwargs"] == {
+        "format": "jpg",
+        "dpi": PLOT_OUTPUT_DPI,
+    }
     assert written_path.exists()
     assert written_path.suffix == ".jpg"
     assert written_path.stat().st_size > 0
+
+
+def test_save_plot_uses_custom_dimensions(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    captured: dict[str, object] = {}
+    original_subplots = plotting_module.plt.subplots
+
+    def wrapped_subplots(*args, **kwargs):
+        figure, axis = original_subplots(*args, **kwargs)
+        captured["figsize"] = kwargs.get("figsize")
+        original_savefig = figure.savefig
+
+        def wrapped_savefig(*savefig_args, **savefig_kwargs):
+            captured["savefig_kwargs"] = dict(savefig_kwargs)
+            return original_savefig(*savefig_args, **savefig_kwargs)
+
+        figure.savefig = wrapped_savefig
+        return figure, axis
+
+    monkeypatch.setattr(plotting_module.plt, "subplots", wrapped_subplots)
+
+    dataframe = load_ndax_dataframe(sample_ndax_path())
+    output_path = tmp_path / "custom_plot.jpg"
+
+    save_plot(
+        dataframe,
+        x_col=PLOT_X_COLUMN,
+        y_col=PLOT_Y_COLUMN,
+        output_path=output_path,
+        series_label=sample_ndax_path().stem,
+        x_limits=None,
+        y_limits=None,
+        output_width_px=1800,
+        output_height_px=1200,
+    )
+
+    assert captured["figsize"] == (12.0, 8.0)
+    assert captured["savefig_kwargs"] == {
+        "format": "jpg",
+        "dpi": PLOT_OUTPUT_DPI,
+    }
+
+
+@pytest.mark.parametrize(
+    ("output_width_px", "output_height_px", "match"),
+    [
+        (
+            MIN_PLOT_OUTPUT_DIMENSION_PX - 1,
+            DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+            rf"^Output width must be between {MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} pixels\.$",
+        ),
+        (
+            DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+            MAX_PLOT_OUTPUT_DIMENSION_PX + 1,
+            rf"^Output height must be between {MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} pixels\.$",
+        ),
+    ],
+)
+def test_save_plot_rejects_unreasonable_dimensions(
+    output_width_px: int,
+    output_height_px: int,
+    match: str,
+    tmp_path: Path,
+):
+    dataframe = load_ndax_dataframe(sample_ndax_path())
+
+    with pytest.raises(ValueError, match=match):
+        save_plot(
+            dataframe,
+            x_col=PLOT_X_COLUMN,
+            y_col=PLOT_Y_COLUMN,
+            output_path=tmp_path / "plot.jpg",
+            series_label=sample_ndax_path().stem,
+            x_limits=None,
+            y_limits=None,
+            output_width_px=output_width_px,
+            output_height_px=output_height_px,
+        )
+
+
+@pytest.mark.parametrize(
+    ("output_width_px", "output_height_px"),
+    [
+        (MIN_PLOT_OUTPUT_DIMENSION_PX, DEFAULT_PLOT_OUTPUT_HEIGHT_PX),
+        (DEFAULT_PLOT_OUTPUT_WIDTH_PX, MAX_PLOT_OUTPUT_DIMENSION_PX),
+    ],
+)
+def test_save_plot_accepts_boundary_dimensions(
+    monkeypatch: pytest.MonkeyPatch,
+    output_width_px: int,
+    output_height_px: int,
+    tmp_path: Path,
+):
+    captured: dict[str, object] = {}
+    original_subplots = plotting_module.plt.subplots
+
+    def wrapped_subplots(*args, **kwargs):
+        figure, axis = original_subplots(*args, **kwargs)
+        captured["figsize"] = kwargs.get("figsize")
+        return figure, axis
+
+    monkeypatch.setattr(plotting_module.plt, "subplots", wrapped_subplots)
+
+    dataframe = load_ndax_dataframe(sample_ndax_path())
+    output_path = tmp_path / "boundary_plot.jpg"
+
+    written_path = save_plot(
+        dataframe,
+        x_col=PLOT_X_COLUMN,
+        y_col=PLOT_Y_COLUMN,
+        output_path=output_path,
+        series_label=sample_ndax_path().stem,
+        x_limits=None,
+        y_limits=None,
+        output_width_px=output_width_px,
+        output_height_px=output_height_px,
+    )
+
+    assert captured["figsize"] == (
+        output_width_px / PLOT_OUTPUT_DPI,
+        output_height_px / PLOT_OUTPUT_DPI,
+    )
+    assert written_path == output_path
+    assert written_path.exists()
 
 
 def test_resolve_axis_label_formats_known_columns():

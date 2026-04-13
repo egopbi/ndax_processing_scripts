@@ -16,6 +16,7 @@ from table_data_extraction.plotting import (
     AxisLimits,
     PlotSeries,
     prepare_plot_frame,
+    resolve_plot_output_dimensions,
     resolve_shared_initial_cycle_trim_points,
     resolve_plot_columns,
     resolve_shared_startup_tail_trim_points,
@@ -74,6 +75,22 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--output", help="Optional JPG output path.")
+    parser.add_argument(
+        "--output-width-px",
+        type=int,
+        help=(
+            "Optional JPG width in pixels. Default: 1500. "
+            "Valid range: 300 to 6000."
+        ),
+    )
+    parser.add_argument(
+        "--output-height-px",
+        type=int,
+        help=(
+            "Optional JPG height in pixels. Default: 900. "
+            "Valid range: 300 to 6000."
+        ),
+    )
     return parser
 
 
@@ -123,12 +140,21 @@ def _resolve_separate_output_paths(
     return outputs
 
 
+def _resolve_output_dimensions(args: argparse.Namespace) -> tuple[int, int]:
+    return resolve_plot_output_dimensions(
+        output_width_px=args.output_width_px,
+        output_height_px=args.output_height_px,
+    )
+
+
 def run(argv: Sequence[str] | None = None) -> Path | list[Path]:
     args = _build_parser().parse_args(argv)
     if args.separate and args.output is not None:
         raise ValueError(
             "--separate cannot be used together with --output."
         )
+
+    output_width_px, output_height_px = _resolve_output_dimensions(args)
 
     labels = _resolve_labels(args.files, args.labels)
     input_paths = [Path(file_path) for file_path in args.files]
@@ -218,6 +244,8 @@ def run(argv: Sequence[str] | None = None) -> Path | list[Path]:
                     output_path=output_path,
                     x_limits=x_limits,
                     y_limits=y_limits,
+                    output_width_px=output_width_px,
+                    output_height_px=output_height_px,
                 )
             )
         return written_paths
@@ -238,6 +266,8 @@ def run(argv: Sequence[str] | None = None) -> Path | list[Path]:
         output_path=output_path,
         x_limits=x_limits,
         y_limits=y_limits,
+        output_width_px=output_width_px,
+        output_height_px=output_height_px,
     )
 
 
