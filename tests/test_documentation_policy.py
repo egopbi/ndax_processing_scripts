@@ -28,6 +28,15 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _section(text: str, heading: str) -> str:
+    start = text.index(heading)
+    remainder = text[start + len(heading) :]
+    next_heading = remainder.find("\n## ")
+    if next_heading == -1:
+        return text[start:]
+    return text[start : start + len(heading) + next_heading]
+
+
 def test_python_policy_is_consistent_across_repo_docs_and_metadata() -> None:
     readme = _read_text(README_PATH)
     pyproject = tomllib.loads(_read_text(PYPROJECT_PATH))
@@ -46,6 +55,10 @@ def test_python_policy_is_consistent_across_repo_docs_and_metadata() -> None:
 
 def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
     readme = _read_text(README_PATH)
+    plot_cli_section = _section(readme, r"`.\plot_ndax.cmd` принимает:")
+    ui_section = _section(readme, r"Что можно сделать в `.\ndax_ui.cmd`:")
+    plot_cli_lines = [line.strip() for line in plot_cli_section.splitlines()]
+    ui_lines = [line.strip() for line in ui_section.splitlines()]
 
     assert r".\ndax_ui.cmd" in readme
     assert r".\plot_ndax.cmd --files examples\example1_1.ndax --y-column Voltage" in readme
@@ -57,8 +70,25 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
         r'.\convert_ndax.cmd --files examples\example1_1.ndax --columns Voltage "Current(mA)"'
         in readme
     )
-    assert "--separate" in readme
-    assert "Output filename override" in readme
+    ui_contract_line = next(
+        line for line in ui_lines if "Separate" in line and "Output filename override" in line
+    )
+    assert ui_contract_line.index("Separate") < ui_contract_line.index("Output filename override")
+
+    separate_cli_line = next(line for line in plot_cli_lines if "--separate" in line)
+    output_cli_line = next(line for line in plot_cli_lines if "--output" in line)
+    contract_line = next(
+        line
+        for line in plot_cli_lines
+        if "stem" in line and ("cannot" in line or "нельзя" in line) and "Rest" in line
+    )
+    assert plot_cli_lines.index(separate_cli_line) < plot_cli_lines.index(output_cli_line)
+    assert "Separate" in ui_contract_line
+    assert "Output filename override" in ui_contract_line
+    assert "--separate" in separate_cli_line
+    assert "--output" in output_cli_line
+    assert "stem" in contract_line
+    assert "Rest" in contract_line
     assert r"data\sample.ndax" not in readme
     assert "в первой строке заголовка" not in readme
 
@@ -67,15 +97,43 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
     for path in CANONICAL_DOC_PATHS:
         assert path.exists(), f"Missing canonical doc: {path.relative_to(ROOT_DIR)}"
 
-    combined_docs = "\n".join(_read_text(path) for path in CANONICAL_DOC_PATHS)
+    project_overview = _read_text(ROOT_DIR / "docs" / "project_overview.md")
+    architecture = _read_text(ROOT_DIR / "docs" / "architecture.md")
+    development_notes = _read_text(ROOT_DIR / "docs" / "development_notes.md")
 
-    assert "scripts/plot_ndax.py" in combined_docs
-    assert "scripts/build_comparison_table.py" in combined_docs
-    assert "scripts/convert_ndax.py" in combined_docs
-    assert "project_config.yaml" in combined_docs
-    assert "table_data_extraction.project_config" in combined_docs
-    assert "--separate" in combined_docs
-    assert "shared batch preprocessing" in combined_docs or "shared preprocessing" in combined_docs
+    plot_contract = _section(project_overview, "Plot mode behavior contract:")
+    plot_data_flow = _section(architecture, "`scripts/plot_ndax.py`:")
+
+    assert "scripts/plot_ndax.py" in project_overview
+    assert "scripts/build_comparison_table.py" in project_overview
+    assert "scripts/convert_ndax.py" in project_overview
+    assert "project_config.yaml" in project_overview
+    assert "table_data_extraction.project_config" in project_overview
+    assert "scripts/plot_ndax.py" in architecture
+    assert "project_config.yaml" in architecture
+    assert "table_data_extraction.project_config" in architecture
+    assert "Python >= 3.12" in development_notes
+
+    plot_contract_lines = [line.strip() for line in plot_contract.splitlines()]
+    plot_data_flow_lines = [line.strip() for line in plot_data_flow.splitlines()]
+
+    separate_line = next(
+        line for line in plot_contract_lines if line.startswith("- `--separate` switches plot output")
+    )
+    stem_line = next(line for line in plot_contract_lines if "source file stem" in line)
+    exclusive_line = next(line for line in plot_contract_lines if "mutually exclusive" in line)
+    trimming_line = next(line for line in plot_contract_lines if "batch preprocessing" in line)
+    assert plot_contract_lines.index(separate_line) < plot_contract_lines.index(stem_line)
+    assert plot_contract_lines.index(stem_line) < plot_contract_lines.index(exclusive_line)
+    assert plot_contract_lines.index(exclusive_line) < plot_contract_lines.index(trimming_line)
+
+    data_flow_line = next(line for line in plot_data_flow_lines if "shared preprocessing" in line)
+    combined_line = next(line for line in plot_data_flow_lines if "one image per input file" in line)
+    assert "shared preprocessing" in data_flow_line
+    assert "one image per input file" in combined_line
+    assert "incompatible with filename override / `--output`" in architecture
+    assert "shared batch preprocessing reused by plot outputs" in architecture
+    assert "Public plot docs must also describe the `--separate` mode" in development_notes
 
 
 def test_legacy_public_files_are_removed() -> None:
