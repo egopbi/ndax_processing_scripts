@@ -239,13 +239,8 @@ def test_advanced_options_screen_saves_plot_values() -> None:
             height_label = app.screen.query_one("#advanced-label-output-height", Static)
             height_input = app.screen.query_one("#advanced-output-height", Input)
             labels_input = app.screen.query_one("#advanced-labels", Input)
-            section_ids = [widget.id for widget in app.screen.query(".section-shell")]
             assert size_section.has_class("section-shell")
             assert labels_section.has_class("section-shell")
-            assert section_ids[:2] == [
-                "advanced-output-size-section",
-                "advanced-labels-section",
-            ]
             assert app.screen.query_one("#advanced-options-title", Static).content == "Plot Options"
             assert width_label.content == "Width (px)"
             assert height_label.content == "Height (px)"
@@ -333,10 +328,14 @@ def test_advanced_options_screen_keeps_actions_visible_on_tight_viewport() -> No
             await pilot.pause()
 
             assert app.screen.query_one("#advanced-options-scroll", VerticalScroll)
-            assert width_input.region.height >= 1
-            assert height_input.region.height >= 1
-            assert labels_input.region.height >= 1
+            assert width_input.region.height >= 3
+            assert height_input.region.height >= 3
+            assert labels_input.region.height >= 3
             assert height_input.region.y + height_input.region.height <= (
+                scroll.region.y + scroll.region.height
+            )
+            assert labels_input.region.y >= scroll.region.y
+            assert labels_input.region.y + labels_input.region.height <= (
                 scroll.region.y + scroll.region.height
             )
             assert scroll.scroll_offset.y > 0

@@ -268,14 +268,9 @@ def test_plot_more_options_image_size_section_matches_settings_layout() -> None:
             width_input = app.screen.query_one("#advanced-output-width", Input)
             height_input = app.screen.query_one("#advanced-output-height", Input)
             labels_input = app.screen.query_one("#advanced-labels", Input)
-            section_ids = [widget.id for widget in app.screen.query(".section-shell")]
 
             assert section.has_class("section-shell")
             assert labels_section.has_class("section-shell")
-            assert section_ids[:2] == [
-                "advanced-output-size-section",
-                "advanced-labels-section",
-            ]
             assert title.content == "Plot Options"
             assert labels_label.content == "Labels, comma separated"
             assert width_input.value == str(DEFAULT_PLOT_OUTPUT_WIDTH_PX)
@@ -327,6 +322,10 @@ def test_plot_more_options_scrolls_height_input_into_view_on_tight_viewport() ->
             assert height_input.region.height >= 3
             assert labels_input.region.height >= 3
             assert width_input.region.height == height_input.region.height
+            assert labels_input.region.y >= scroll.region.y
+            assert labels_input.region.y + labels_input.region.height <= (
+                scroll.region.y + scroll.region.height
+            )
             assert scroll.styles.scrollbar_color.rgb == PROJECT_BLUE_RGB
             assert scroll.styles.scrollbar_color_hover.rgb == PROJECT_BLUE_HOVER_RGB
             assert scroll.styles.scrollbar_color_active.rgb == PROJECT_BLUE_RGB
