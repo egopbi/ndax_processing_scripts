@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from textual.app import App
 from textual.css.query import NoMatches
+from textual.containers import VerticalScroll
 from textual.widgets import Button, Input, SelectionList, Static
 
 from table_data_extraction.tui.screens.advanced_options_screen import (
@@ -295,6 +296,33 @@ def test_advanced_options_screen_can_request_health_check_for_table() -> None:
             assert app.screen_result.state.mode == "table"
             assert app.screen_result.state.labels == "label-1,label-2"
             assert app.screen_result.state.output_override == "table.csv"
+
+    asyncio.run(_run())
+
+
+def test_advanced_options_screen_keeps_actions_visible_on_tight_viewport() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            AdvancedOptionsScreen(
+                mode="plot",
+                labels="a, b",
+                output_override="plot.jpg",
+            )
+        )
+        async with app.run_test(size=(84, 20)) as pilot:
+            await pilot.pause()
+            viewport_height = app.screen.size.height
+
+            assert app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+
+            for button_id in (
+                "#advanced-save",
+                "#advanced-health-check",
+                "#advanced-cancel",
+            ):
+                button = app.screen.query_one(button_id, Button)
+                assert button.region.height > 0
+                assert button.region.y + button.region.height <= viewport_height
 
     asyncio.run(_run())
 
