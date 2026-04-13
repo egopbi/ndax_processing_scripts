@@ -21,6 +21,13 @@ import pandas as pd
 
 from .columns import resolve_column_name
 from .extrema import _is_local_maximum, _is_local_minimum
+from .plot_dimensions import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+    MAX_PLOT_OUTPUT_DIMENSION_PX,
+    MIN_PLOT_OUTPUT_DIMENSION_PX,
+    resolve_plot_output_dimensions,
+)
 from .preprocess import (
     trim_leading_rest_rows as trim_leading_rest_rows_stage_1,
 )
@@ -33,10 +40,6 @@ from .time_utils import (
 AxisLimits = tuple[float | None, float | None] | None
 STARTUP_TAIL_MIN_POINTS = 5
 PLOT_OUTPUT_DPI = 150
-DEFAULT_PLOT_OUTPUT_WIDTH_PX = 1500
-DEFAULT_PLOT_OUTPUT_HEIGHT_PX = 900
-MIN_PLOT_OUTPUT_DIMENSION_PX = 300
-MAX_PLOT_OUTPUT_DIMENSION_PX = 6000
 
 
 @dataclass(frozen=True)
@@ -313,46 +316,6 @@ def _set_axis_limits(axis, x_limits: AxisLimits, y_limits: AxisLimits) -> None:
     if y_limits is not None:
         y_lower, y_upper = y_limits
         axis.set_ylim(bottom=y_lower, top=y_upper)
-
-
-def _validate_plot_output_dimension(
-    value_px: int, *, dimension_name: str
-) -> int:
-    if not (
-        MIN_PLOT_OUTPUT_DIMENSION_PX
-        <= value_px
-        <= MAX_PLOT_OUTPUT_DIMENSION_PX
-    ):
-        raise ValueError(
-            f"{dimension_name} must be between "
-            f"{MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} "
-            f"pixels."
-        )
-    return value_px
-
-
-def resolve_plot_output_dimensions(
-    *,
-    output_width_px: int | None = None,
-    output_height_px: int | None = None,
-) -> tuple[int, int]:
-    resolved_width_px = (
-        DEFAULT_PLOT_OUTPUT_WIDTH_PX
-        if output_width_px is None
-        else output_width_px
-    )
-    resolved_height_px = (
-        DEFAULT_PLOT_OUTPUT_HEIGHT_PX
-        if output_height_px is None
-        else output_height_px
-    )
-    _validate_plot_output_dimension(
-        resolved_width_px, dimension_name="Output width"
-    )
-    _validate_plot_output_dimension(
-        resolved_height_px, dimension_name="Output height"
-    )
-    return resolved_width_px, resolved_height_px
 
 
 def save_multi_series_plot(

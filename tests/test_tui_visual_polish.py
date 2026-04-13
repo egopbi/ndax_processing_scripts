@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 from textual.scrollbar import ScrollBarRender
 from textual.css.query import NoMatches
-from textual.widgets import Select, Static, SelectionList
+from textual.widgets import Button, Input, Select, Static, SelectionList
+from textual.containers import VerticalScroll
 
 from table_data_extraction.tui.app import NdaxTuiApp
 from table_data_extraction.tui.widgets.file_list import FileList
@@ -238,6 +239,44 @@ def test_more_options_replace_nested_advanced_sections() -> None:
 
             assert app.screen.query_one("#plot-more-options")
             assert app.screen.query_one("#table-more-options")
+
+    asyncio.run(_run())
+
+
+def test_plot_more_options_image_size_section_matches_settings_layout() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.pause()
+            main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
+            button = app.screen.query_one("#plot-more-options", Button)
+            main_scroll.scroll_to_widget(button, animate=False, immediate=True)
+            await pilot.pause()
+            await pilot.click("#plot-more-options")
+            await pilot.pause()
+
+            section = app.screen.query_one("#advanced-output-size-section")
+            labels_section = app.screen.query_one("#advanced-labels-section")
+            title = app.screen.query_one("#advanced-options-title", Static)
+            labels_label = app.screen.query_one("#advanced-labels-label", Static)
+            width_label = app.screen.query_one("#advanced-label-output-width", Static)
+            height_label = app.screen.query_one("#advanced-label-output-height", Static)
+            width_input = app.screen.query_one("#advanced-output-width", Input)
+            height_input = app.screen.query_one("#advanced-output-height", Input)
+
+            assert section.has_class("section-shell")
+            assert labels_section.has_class("section-shell")
+            assert title.content == "Plot Options"
+            assert labels_label.content == "Labels, comma separated"
+            assert width_label.region.y < width_input.region.y
+            assert height_label.region.y < height_input.region.y
+            assert width_input.region.y < height_input.region.y
+            assert all(
+                ord(character) < 128
+                for character in title.content
+                + width_label.content
+                + height_label.content
+            )
 
     asyncio.run(_run())
 

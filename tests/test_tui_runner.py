@@ -2,6 +2,8 @@ from pathlib import Path
 import sys
 import threading
 
+import pytest
+
 from table_data_extraction.tui.command_builder import (
     build_convert_command,
     build_health_check_command,
@@ -9,8 +11,12 @@ from table_data_extraction.tui.command_builder import (
     build_table_command,
 )
 from table_data_extraction.tui.models import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
     ConvertRunConfig,
     HealthCheckRunConfig,
+    MAX_PLOT_OUTPUT_DIMENSION_PX,
+    MIN_PLOT_OUTPUT_DIMENSION_PX,
     PlotRunConfig,
     SubprocessCommand,
     TableRunConfig,
@@ -38,6 +44,12 @@ def test_build_plot_command_uses_overridden_output_dir(tmp_path: Path) -> None:
         "--files",
     )
     assert "--files" in command.argv
+    assert command.argv[command.argv.index("--output-width-px") + 1] == str(
+        DEFAULT_PLOT_OUTPUT_WIDTH_PX
+    )
+    assert command.argv[command.argv.index("--output-height-px") + 1] == str(
+        DEFAULT_PLOT_OUTPUT_HEIGHT_PX
+    )
     assert "--output" in command.argv
     assert command.output_path is not None
     assert command.output_path.parent == tmp_path
@@ -56,6 +68,60 @@ def test_build_plot_command_includes_separate_flag() -> None:
 
     assert command.mode == "plot"
     assert "--separate" in command.argv
+
+
+def test_build_plot_command_accepts_custom_output_dimensions() -> None:
+    command = build_plot_command(
+        PlotRunConfig(
+            files=(Path("examples/example1_1.ndax"),),
+            y_column="Voltage",
+            output_width_px=1800,
+            output_height_px=1200,
+        ),
+        python_executable="python-test",
+    )
+
+    width_index = command.argv.index("--output-width-px")
+    height_index = command.argv.index("--output-height-px")
+    assert command.argv[width_index + 1] == "1800"
+    assert command.argv[height_index + 1] == "1200"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        (
+            "output_width_px",
+            MIN_PLOT_OUTPUT_DIMENSION_PX - 1,
+            rf"Output width must be between {MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} pixels\.",
+        ),
+        (
+            "output_height_px",
+            MAX_PLOT_OUTPUT_DIMENSION_PX + 1,
+            rf"Output height must be between {MIN_PLOT_OUTPUT_DIMENSION_PX} and {MAX_PLOT_OUTPUT_DIMENSION_PX} pixels\.",
+        ),
+    ],
+)
+def test_build_plot_command_rejects_unreasonable_output_dimensions(
+    field: str,
+    value: int,
+    match: str,
+) -> None:
+    kwargs = {"output_width_px": None, "output_height_px": None}
+    kwargs[field] = value
+
+    try:
+        build_plot_command(
+            PlotRunConfig(
+                files=(Path("examples/example1_1.ndax"),),
+                y_column="Voltage",
+                **kwargs,
+            )
+        )
+    except ValueError as error:
+        assert match.replace(r"\.", ".").casefold() in str(error).casefold()
+    else:
+        raise AssertionError("Expected output dimension validation failure.")
 
 
 def test_build_plot_command_drops_output_when_separate_enabled(tmp_path: Path) -> None:

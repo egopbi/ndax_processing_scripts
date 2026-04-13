@@ -9,7 +9,11 @@ from textual.css.query import NoMatches
 from textual.widgets import Button, Checkbox, Input, Select, Static
 
 from table_data_extraction.tui.app import NdaxTuiApp
-from table_data_extraction.tui.models import CompletedCommand
+from table_data_extraction.tui.models import (
+    CompletedCommand,
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+)
 from table_data_extraction.tui.screens.main_screen import MainScreen
 from table_data_extraction.tui.screens.settings_screen import SettingsScreen
 from table_data_extraction.tui.widgets.file_list import FileList
@@ -479,6 +483,38 @@ def test_more_options_open_modal_screen() -> None:
             await pilot.pause()
 
             assert app.screen.query_one("#advanced-options-dialog")
+            assert app.screen.query_one("#advanced-output-size-section")
+            assert app.screen.query_one("#advanced-labels-section")
+            assert app.screen.query_one("#advanced-output-width", Input).value == str(DEFAULT_PLOT_OUTPUT_WIDTH_PX)
+            assert app.screen.query_one("#advanced-output-height", Input).value == str(DEFAULT_PLOT_OUTPUT_HEIGHT_PX)
+            assert app.screen.query_one("#advanced-labels", Input).value == ""
+
+    asyncio.run(_run())
+
+
+def test_plot_more_options_preserves_image_size_state_between_opens() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            await pilot.pause()
+
+            main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
+            button = app.screen.query_one("#plot-more-options", Button)
+            main_scroll.scroll_to_widget(button, animate=False, immediate=True)
+            await pilot.pause()
+            await pilot.click("#plot-more-options")
+            await pilot.pause()
+
+            app.screen.query_one("#advanced-output-width", Input).value = "1800"
+            app.screen.query_one("#advanced-output-height", Input).value = "1200"
+            await pilot.click("#advanced-save")
+            await pilot.pause()
+
+            await pilot.click("#plot-more-options")
+            await pilot.pause()
+
+            assert app.screen.query_one("#advanced-output-width", Input).value == "1800"
+            assert app.screen.query_one("#advanced-output-height", Input).value == "1200"
 
     asyncio.run(_run())
 
@@ -589,6 +625,8 @@ def test_plot_mode_builds_separate_command_without_output_override(monkeypatch) 
 
             base_command = app.screen._build_active_command()
             assert "--separate" not in base_command.argv
+            assert "--output-width-px" in base_command.argv
+            assert "--output-height-px" in base_command.argv
             assert "--output" in base_command.argv
             assert base_command.output_path == app.current_output_dir / "custom_name.jpg"
 
@@ -604,6 +642,8 @@ def test_plot_mode_builds_separate_command_without_output_override(monkeypatch) 
 
             separate_command = app.screen._build_active_command()
             assert "--separate" in separate_command.argv
+            assert "--output-width-px" in separate_command.argv
+            assert "--output-height-px" in separate_command.argv
             assert "--output" not in separate_command.argv
             assert separate_command.output_path is None
 

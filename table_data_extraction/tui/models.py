@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from table_data_extraction.plot_dimensions import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+    MAX_PLOT_OUTPUT_DIMENSION_PX,
+    MIN_PLOT_OUTPUT_DIMENSION_PX,
+)
+
 RunMode = Literal["plot", "table", "convert", "health-check"]
 
 
@@ -17,6 +24,8 @@ class PlotRunConfig:
     x_max: float | None = None
     y_min: float | None = None
     y_max: float | None = None
+    output_width_px: int | None = None
+    output_height_px: int | None = None
     separate: bool = False
     output_path: Path | None = None
 

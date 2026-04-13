@@ -601,6 +601,12 @@ class MainScreen(Screen[None]):
                 y_max=self._parse_optional_float(
                     self.query_one("#plot-y-max", Input).value
                 ),
+                output_width_px=self._parse_optional_int(
+                    advanced.output_width_px
+                ),
+                output_height_px=self._parse_optional_int(
+                    advanced.output_height_px
+                ),
                 separate=separate,
                 output_path=(
                     None
@@ -619,6 +625,12 @@ class MainScreen(Screen[None]):
         if not stripped:
             return None
         return float(stripped)
+
+    def _parse_optional_int(self, value: str) -> int | None:
+        stripped = value.strip()
+        if not stripped:
+            return None
+        return int(stripped)
 
     def _run_command_in_thread(
         self,
@@ -740,6 +752,8 @@ class MainScreen(Screen[None]):
                 mode=mode,
                 labels=state.labels,
                 output_override=self._output_override_input_for_mode(mode).value,
+                output_width_px=state.output_width_px,
+                output_height_px=state.output_height_px,
             ),
             self._advanced_options_closed,
         )

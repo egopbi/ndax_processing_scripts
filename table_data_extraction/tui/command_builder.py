@@ -8,6 +8,9 @@ from table_data_extraction.output_paths import (
     default_plot_output_path,
     default_table_output_path,
 )
+from table_data_extraction.plot_dimensions import (
+    resolve_plot_output_dimensions,
+)
 
 from .models import (
     ConvertRunConfig,
@@ -88,6 +91,10 @@ def build_plot_command(
 ) -> SubprocessCommand:
     files = _normalize_paths(config.files)
     labels = _normalize_labels(files, config.labels)
+    output_width_px, output_height_px = resolve_plot_output_dimensions(
+        output_width_px=config.output_width_px,
+        output_height_px=config.output_height_px,
+    )
     output_path = config.output_path
     if config.separate:
         output_path = None
@@ -117,6 +124,8 @@ def build_plot_command(
         argv.extend(["--y-min", str(config.y_min)])
     if config.y_max is not None:
         argv.extend(["--y-max", str(config.y_max)])
+    argv.extend(["--output-width-px", str(output_width_px)])
+    argv.extend(["--output-height-px", str(output_height_px)])
     if config.separate:
         argv.append("--separate")
     if output_path is not None:
