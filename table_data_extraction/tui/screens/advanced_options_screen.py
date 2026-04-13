@@ -71,12 +71,11 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
         scrollbar-gutter: stable;
     }
 
-    #advanced-output-size-section {
-        height: 9;
-    }
-
+    #advanced-output-size-section,
     #advanced-labels-section {
-        height: 5;
+        width: 1fr;
+        height: auto;
+        margin-bottom: 1;
     }
 
     #advanced-options-actions {
