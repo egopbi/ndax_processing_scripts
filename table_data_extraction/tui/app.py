@@ -218,6 +218,9 @@ class NdaxTuiApp(App[None]):
 
     Select > SelectOverlay {
         border: ascii #343a43;
+        scrollbar-color: #6db7ff;
+        scrollbar-color-hover: #8cc8ff;
+        scrollbar-color-active: #6db7ff;
     }
 
     Select:focus > SelectOverlay {

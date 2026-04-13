@@ -12,6 +12,7 @@ from table_data_extraction.tui.widgets.palette_preview import PalettePreview
 
 
 PROJECT_BLUE_RGB = (109, 183, 255)
+PROJECT_BLUE_HOVER_RGB = (140, 200, 255)
 
 
 def test_top_bar_branding_and_buttons_are_not_clipped() -> None:
@@ -129,6 +130,26 @@ def test_mode_select_overlay_keeps_ascii_border_when_open() -> None:
             assert border.right[0] == "ascii"
             assert border.bottom[0] == "ascii"
             assert border.left[0] == "ascii"
+
+    asyncio.run(_run())
+
+
+def test_mode_select_overlay_scrollbar_uses_project_blue_palette() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 34)) as pilot:
+            await pilot.pause()
+
+            mode_select = app.screen.query_one("#mode-select", Select)
+            mode_select.focus()
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
+
+            overlay = mode_select.query_one("SelectOverlay")
+            assert overlay.styles.scrollbar_color.rgb == PROJECT_BLUE_RGB
+            assert overlay.styles.scrollbar_color_hover.rgb == PROJECT_BLUE_HOVER_RGB
+            assert overlay.styles.scrollbar_color_active.rgb == PROJECT_BLUE_RGB
 
     asyncio.run(_run())
 
