@@ -169,6 +169,52 @@ def test_save_plot_rejects_unreasonable_dimensions(
         )
 
 
+@pytest.mark.parametrize(
+    ("output_width_px", "output_height_px"),
+    [
+        (MIN_PLOT_OUTPUT_DIMENSION_PX, DEFAULT_PLOT_OUTPUT_HEIGHT_PX),
+        (DEFAULT_PLOT_OUTPUT_WIDTH_PX, MAX_PLOT_OUTPUT_DIMENSION_PX),
+    ],
+)
+def test_save_plot_accepts_boundary_dimensions(
+    monkeypatch: pytest.MonkeyPatch,
+    output_width_px: int,
+    output_height_px: int,
+    tmp_path: Path,
+):
+    captured: dict[str, object] = {}
+    original_subplots = plotting_module.plt.subplots
+
+    def wrapped_subplots(*args, **kwargs):
+        figure, axis = original_subplots(*args, **kwargs)
+        captured["figsize"] = kwargs.get("figsize")
+        return figure, axis
+
+    monkeypatch.setattr(plotting_module.plt, "subplots", wrapped_subplots)
+
+    dataframe = load_ndax_dataframe(sample_ndax_path())
+    output_path = tmp_path / "boundary_plot.jpg"
+
+    written_path = save_plot(
+        dataframe,
+        x_col=PLOT_X_COLUMN,
+        y_col=PLOT_Y_COLUMN,
+        output_path=output_path,
+        series_label=sample_ndax_path().stem,
+        x_limits=None,
+        y_limits=None,
+        output_width_px=output_width_px,
+        output_height_px=output_height_px,
+    )
+
+    assert captured["figsize"] == (
+        output_width_px / PLOT_OUTPUT_DPI,
+        output_height_px / PLOT_OUTPUT_DPI,
+    )
+    assert written_path == output_path
+    assert written_path.exists()
+
+
 def test_resolve_axis_label_formats_known_columns():
     assert resolve_axis_label("Time") == "Total Time (h)"
     assert resolve_axis_label("Voltage") == "Voltage (mV)"

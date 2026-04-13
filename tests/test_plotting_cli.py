@@ -425,6 +425,66 @@ def test_cli_separate_mode_writes_one_plot_per_input_file(
     assert "second_sample.jpg" in stdout
 
 
+def test_cli_separate_mode_propagates_custom_output_dimensions(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+
+    def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
+        return _sample_dataframe()
+
+    def fake_default_separate_plot_output_path(*, source_path: Path) -> Path:
+        return tmp_path / f"{source_path.stem}.jpg"
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+        output_width_px=None,
+        output_height_px=None,
+        **_kwargs,
+    ) -> Path:
+        captured.setdefault("output_width_px", []).append(output_width_px)
+        captured.setdefault("output_height_px", []).append(output_height_px)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(
+        module,
+        "default_separate_plot_output_path",
+        fake_default_separate_plot_output_path,
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+
+    exit_code = module.main([
+        "--files",
+        str(tmp_path / "first_sample.ndax"),
+        str(tmp_path / "second_sample.ndax"),
+        "--y-column",
+        "voltage",
+        "--separate",
+        "--output-width-px",
+        "1800",
+        "--output-height-px",
+        "1200",
+    ])
+
+    assert exit_code == 0
+    assert captured["output_width_px"] == [1800, 1800]
+    assert captured["output_height_px"] == [1200, 1200]
+
+
 def test_cli_rejects_output_override_in_separate_mode(capsys) -> None:
     module = _load_plot_ndax_module()
     exit_code = module.main([
