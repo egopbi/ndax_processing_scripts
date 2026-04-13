@@ -73,6 +73,7 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
     ui_contract_line = next(
         line for line in ui_lines if "Separate" in line and "Output filename override" in line
     )
+    plot_options_line = next(line for line in ui_lines if "More Options" in line)
     assert ui_contract_line.index("Separate") < ui_contract_line.index("Output filename override")
 
     separate_cli_line = next(line for line in plot_cli_lines if "--separate" in line)
@@ -89,6 +90,23 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
     assert "--output" in output_cli_line
     assert "stem" in contract_line
     assert "Rest" in contract_line
+    size_cli_lines = [
+        line
+        for line in plot_cli_lines
+        if "--output-width-px" in line
+        or "--output-height-px" in line
+        or "диапазоне от `300` до `6000` px" in line
+    ]
+    assert size_cli_lines == [
+        "- `--output-width-px` ширина итогового JPG в пикселях, по умолчанию `1500`",
+        "- `--output-height-px` высота итогового JPG в пикселях, по умолчанию `900`",
+        "- оба параметра размера принимают значения только в диапазоне от `300` до `6000` px",
+    ]
+    assert plot_options_line == (
+        "- в mode `Plot` открыть `More Options` и задать `Output width (px)` / `Output height (px)` "
+        "для итоговой картинки; поля уже заполнены значениями по умолчанию `1500` и `900`, "
+        "а допустимый диапазон для каждого значения - от `300` до `6000` px;"
+    )
     assert r"data\sample.ndax" not in readme
     assert "в первой строке заголовка" not in readme
 
@@ -116,6 +134,26 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
 
     plot_contract_lines = [line.strip() for line in plot_contract.splitlines()]
     plot_data_flow_lines = [line.strip() for line in plot_data_flow.splitlines()]
+    plot_invariants = _section(architecture, "## Invariants")
+    plot_invariants_lines = [line.strip() for line in plot_invariants.splitlines()]
+    development_notes_lines = [line.strip() for line in development_notes.splitlines()]
+
+    size_contract_lines = [
+        line
+        for line in plot_contract_lines
+        if "output image size is controlled" in line
+        or "output-width-px" in line
+        or "output-height-px" in line
+        or "1500x900" in line
+        or "300..6000" in line
+        or "More Options" in line
+    ]
+    assert size_contract_lines == [
+        "- output image size is controlled by `--output-width-px` and `--output-height-px`",
+        "- the default size is `1500x900` px",
+        "- both size parameters accept only `300..6000` px",
+        "- the same size controls are available in TUI `Plot` -> `More Options`",
+    ]
 
     separate_line = next(
         line for line in plot_contract_lines if line.startswith("- `--separate` switches plot output")
@@ -129,11 +167,34 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
 
     data_flow_line = next(line for line in plot_data_flow_lines if "shared preprocessing" in line)
     combined_line = next(line for line in plot_data_flow_lines if "one image per input file" in line)
+    validation_line = next(
+        line for line in plot_data_flow_lines if "validates output image width and height" in line
+    )
     assert "shared preprocessing" in data_flow_line
     assert "one image per input file" in combined_line
-    assert "incompatible with filename override / `--output`" in architecture
-    assert "shared batch preprocessing reused by plot outputs" in architecture
-    assert "Public plot docs must also describe the `--separate` mode" in development_notes
+    assert validation_line == "5. validates output image width and height in pixels before export"
+
+    invariant_size_lines = [
+        line
+        for line in plot_invariants_lines
+        if "Plot size controls stay in pixels" in line
+        or "Plot size controls are exposed both through CLI flags" in line
+    ]
+    assert invariant_size_lines == [
+        "- Plot size controls stay in pixels, default to `1500x900`, and reject values outside `300..6000`.",
+        "- Plot size controls are exposed both through CLI flags (`--output-width-px`, `--output-height-px`) and TUI `Plot` -> `More Options`.",
+    ]
+
+    notes_lines = [
+        line
+        for line in development_notes_lines
+        if "Public plot docs must also describe the `--separate` mode" in line
+        or "Public plot docs must also describe pixel-based output image size controls" in line
+    ]
+    assert notes_lines == [
+        "- Public plot docs must also describe the `--separate` mode, including stem-based output naming, incompatibility with `--output`, and shared batch preprocessing.",
+        "- Public plot docs must also describe pixel-based output image size controls, their `300..6000` px bounds, the `1500x900` default, and their placement in TUI `Plot` -> `More Options`.",
+    ]
 
 
 def test_legacy_public_files_are_removed() -> None:
