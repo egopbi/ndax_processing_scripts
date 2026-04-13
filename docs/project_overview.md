@@ -25,6 +25,13 @@ Convert mode behavior contract:
 - automatic inclusion of the `Time` column in every converted CSV
 - no filename override in the TUI `convert` mode; output location is controlled by `--output-dir` / runtime output directory
 
+Plot mode behavior contract:
+
+- `--separate` switches plot output from one combined JPG to one JPG per input `.ndax`
+- separate plot outputs are named from the source file stem, matching the convert-mode naming model
+- `--separate` is mutually exclusive with `--output` / filename override
+- batch preprocessing and `Rest` trimming are computed once and reused consistently for every separate plot output
+
 ## Configuration Contract
 
 `project_config.yaml` is the source file checked into the repo. Runtime code reads it through `table_data_extraction.project_config`, which validates the required schema and exposes `load_project_config()`.

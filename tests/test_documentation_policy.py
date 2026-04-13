@@ -57,6 +57,8 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
         r'.\convert_ndax.cmd --files examples\example1_1.ndax --columns Voltage "Current(mA)"'
         in readme
     )
+    assert "--separate" in readme
+    assert "Output filename override" in readme
     assert r"data\sample.ndax" not in readme
     assert "в первой строке заголовка" not in readme
 
@@ -72,6 +74,8 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
     assert "scripts/convert_ndax.py" in combined_docs
     assert "project_config.yaml" in combined_docs
     assert "table_data_extraction.project_config" in combined_docs
+    assert "--separate" in combined_docs
+    assert "shared batch preprocessing" in combined_docs or "shared preprocessing" in combined_docs
 
 
 def test_legacy_public_files_are_removed() -> None:

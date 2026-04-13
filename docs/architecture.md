@@ -15,8 +15,8 @@ The health-check workflow is separate and runs from `scripts/health_check_ndax.p
 1. parses CLI arguments
 2. loads each NDAX file with `table_data_extraction.reader`
 3. resolves columns and plot labels
-4. prepares plot-ready data through `table_data_extraction.plotting`
-5. writes the final image through the export helpers
+4. prepares plot-ready data through `table_data_extraction.plotting` and shared preprocessing
+5. writes either one combined image or one image per input file through the export helpers
 
 `scripts/build_comparison_table.py`:
 
@@ -37,7 +37,7 @@ The health-check workflow is separate and runs from `scripts/health_check_ndax.p
 ## Module Boundaries
 
 - `table_data_extraction.reader`: NDAX loading
-- `table_data_extraction.preprocess`: time-axis preparation and row trimming
+- `table_data_extraction.preprocess`: time-axis preparation, row trimming, and shared batch preprocessing reused by plot outputs
 - `table_data_extraction.plotting`: plot column resolution, axis labels, and figure export
 - `table_data_extraction.extrema`: extrema search
 - `table_data_extraction.short_circuit`: short-circuit detection and rounding
@@ -51,4 +51,5 @@ The health-check workflow is separate and runs from `scripts/health_check_ndax.p
 - Supported public commands stay `.\setup_windows.cmd`, `.\plot_ndax.cmd`, `.\build_comparison_table.cmd`, and `.\convert_ndax.cmd`.
 - Configuration defaults come from `project_config.yaml`; code should not silently fork duplicate defaults.
 - CLI behavior changes require explicit tests, not documentation-only edits.
+- Plot `--separate` keeps preprocessing shared across the batch, names outputs from the input stem, and stays incompatible with filename override / `--output`.
 - TUI `convert` mode uses selected columns and output directory only; filename override is intentionally not part of this mode.
