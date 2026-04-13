@@ -53,13 +53,34 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
         padding: 1 2;
     }
 
-    #advanced-options-scroll {
+    #advanced-options-body {
         height: 1fr;
         min-height: 0;
     }
 
+    #advanced-options-scroll {
+        height: 1fr;
+        min-height: 0;
+        padding-right: 1;
+        scrollbar-background: #0f1216;
+        scrollbar-background-hover: #0f1216;
+        scrollbar-background-active: #0f1216;
+        scrollbar-color: #6db7ff;
+        scrollbar-color-hover: #8cc8ff;
+        scrollbar-color-active: #6db7ff;
+        scrollbar-gutter: stable;
+    }
+
+    #advanced-output-size-section {
+        height: 9;
+    }
+
+    #advanced-labels-section {
+        height: 5;
+    }
+
     #advanced-options-actions {
-        dock: bottom;
+        width: 1fr;
         height: auto;
         margin-top: 1;
         background: #20242b;
@@ -90,39 +111,39 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
 
     def compose(self):
         with Vertical(id="advanced-options-dialog"):
-            with VerticalScroll(id="advanced-options-scroll"):
-                yield Label(self._title, id="advanced-options-title")
-                yield Static(
-                    "Adjust labels or run a health check without changing the main layout.",
-                    id="advanced-options-description",
-                )
-                if self._mode == "plot":
-                    with Vertical(
-                        id="advanced-output-size-section",
-                        classes="section-shell",
-                    ):
-                        yield Label("Image size", classes="section-title")
-                        yield Label("Width (px)", id="advanced-label-output-width")
-                        yield Input(
-                            value=self._output_width_px,
-                            id="advanced-output-width",
-                        )
-                        yield Label("Height (px)", id="advanced-label-output-height")
-                        yield Input(
-                            value=self._output_height_px,
-                            id="advanced-output-height",
-                        )
-                with Vertical(id="advanced-labels-section", classes="section-shell"):
-                    yield Label("Labels", classes="section-title")
-                    yield Label(
-                        "Labels, comma separated",
-                        id="advanced-labels-label",
+            with Vertical(id="advanced-options-body"):
+                with VerticalScroll(id="advanced-options-scroll"):
+                    yield Label(self._title, id="advanced-options-title")
+                    yield Static(
+                        "Adjust labels or run a health check without changing the main layout.",
+                        id="advanced-options-description",
                     )
-                    yield Input(value=self._labels, id="advanced-labels")
+                    if self._mode == "plot":
+                        with Vertical(
+                            id="advanced-output-size-section",
+                            classes="section-shell",
+                        ):
+                            yield Label("Image size", classes="section-title")
+                            yield Label("Width (px)", id="advanced-label-output-width")
+                            yield Input(
+                                value=self._output_width_px,
+                                id="advanced-output-width",
+                            )
+                            yield Label("Height (px)", id="advanced-label-output-height")
+                            yield Input(
+                                value=self._output_height_px,
+                                id="advanced-output-height",
+                            )
+                    with Vertical(id="advanced-labels-section", classes="section-shell"):
+                        yield Label("Labels", classes="section-title")
+                        yield Label(
+                            "Labels, comma separated",
+                            id="advanced-labels-label",
+                        )
+                        yield Input(value=self._labels, id="advanced-labels")
             with Horizontal(id="advanced-options-actions"):
                 yield Button("Save", id="advanced-save")
                 yield Button("Run Health Check", id="advanced-health-check")
-                yield Static("", classes="spacer")
                 yield Button("Cancel", id="advanced-cancel")
 
     def _build_result(self, action: AdvancedAction) -> AdvancedOptionsResult:
