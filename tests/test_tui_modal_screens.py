@@ -141,6 +141,24 @@ def test_manage_files_screen_action_buttons_have_uniform_width() -> None:
     asyncio.run(_run())
 
 
+def test_manage_files_screen_action_buttons_have_real_surface_gaps() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(ManageFilesScreen([Path(f"sample_{index:02d}.ndax") for index in range(8)]))
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            top_left = app.screen.query_one("#manage-files-select-all", Button)
+            top_right = app.screen.query_one("#manage-files-clear-selection", Button)
+            bottom_left = app.screen.query_one("#manage-files-remove", Button)
+
+            horizontal_gap = top_right.region.x - (top_left.region.x + top_left.region.width)
+            vertical_gap = bottom_left.region.y - (top_left.region.y + top_left.region.height)
+
+            assert horizontal_gap > 0
+            assert vertical_gap > 0
+
+    asyncio.run(_run())
+
+
 def test_manage_files_screen_action_area_uses_modal_surface_background() -> None:
     async def _run() -> None:
         app = _ScreenHarnessApp(ManageFilesScreen([Path(f"sample_{index:02d}.ndax") for index in range(8)]))
@@ -148,10 +166,14 @@ def test_manage_files_screen_action_area_uses_modal_surface_background() -> None
             await pilot.pause()
             actions = app.screen.query_one("#manage-files-actions")
             rows = list(app.screen.query(".manage-files-action-row"))
+            button_gaps = list(app.screen.query(".manage-files-button-gap"))
+            row_gap = app.screen.query_one(".manage-files-row-gap", Static)
             right_button = app.screen.query_one("#manage-files-cancel", Button)
 
             assert actions.styles.background.rgb == MODAL_SURFACE_RGB
             assert all(row.styles.background.rgb == MODAL_SURFACE_RGB for row in rows)
+            assert all(gap.styles.background.rgb == MODAL_SURFACE_RGB for gap in button_gaps)
+            assert row_gap.styles.background.rgb == MODAL_SURFACE_RGB
             assert right_button.styles.background.rgb != MODAL_SURFACE_RGB
 
     asyncio.run(_run())
@@ -343,6 +365,29 @@ def test_select_columns_screen_action_buttons_have_uniform_width() -> None:
     asyncio.run(_run())
 
 
+def test_select_columns_screen_action_buttons_have_real_surface_gaps() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                [f"Column {index:02d}" for index in range(12)],
+                selected_columns=["Column 00"],
+            )
+        )
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            top_left = app.screen.query_one("#select-columns-select-all", Button)
+            top_right = app.screen.query_one("#select-columns-clear-selected", Button)
+            bottom_left = app.screen.query_one("#select-columns-apply", Button)
+
+            horizontal_gap = top_right.region.x - (top_left.region.x + top_left.region.width)
+            vertical_gap = bottom_left.region.y - (top_left.region.y + top_left.region.height)
+
+            assert horizontal_gap > 0
+            assert vertical_gap > 0
+
+    asyncio.run(_run())
+
+
 def test_select_columns_screen_action_area_uses_modal_surface_background() -> None:
     async def _run() -> None:
         app = _ScreenHarnessApp(
@@ -355,10 +400,14 @@ def test_select_columns_screen_action_area_uses_modal_surface_background() -> No
             await pilot.pause()
             actions = app.screen.query_one("#select-columns-actions")
             rows = list(app.screen.query(".select-columns-action-row"))
+            button_gaps = list(app.screen.query(".select-columns-button-gap"))
+            row_gap = app.screen.query_one(".select-columns-row-gap", Static)
             right_button = app.screen.query_one("#select-columns-cancel", Button)
 
             assert actions.styles.background.rgb == MODAL_SURFACE_RGB
             assert all(row.styles.background.rgb == MODAL_SURFACE_RGB for row in rows)
+            assert all(gap.styles.background.rgb == MODAL_SURFACE_RGB for gap in button_gaps)
+            assert row_gap.styles.background.rgb == MODAL_SURFACE_RGB
             assert right_button.styles.background.rgb != MODAL_SURFACE_RGB
 
     asyncio.run(_run())

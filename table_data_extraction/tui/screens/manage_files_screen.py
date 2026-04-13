@@ -62,7 +62,19 @@ class ManageFilesScreen(ModalScreen[tuple[Path, ...] | None]):
 
     .manage-files-action-row Button {
         width: 1fr;
+        min-width: 0;
         margin: 0;
+    }
+
+    .manage-files-button-gap {
+        width: 1;
+        background: #20242b;
+    }
+
+    .manage-files-row-gap {
+        width: 1fr;
+        height: 1;
+        background: #20242b;
     }
     """
 
@@ -96,16 +108,19 @@ class ManageFilesScreen(ModalScreen[tuple[Path, ...] | None]):
                         "Select All",
                         id="manage-files-select-all",
                     )
+                    yield Static("", classes="manage-files-button-gap")
                     yield Button(
                         "Clear Selection",
                         id="manage-files-clear-selection",
                     )
+                yield Static("", classes="manage-files-row-gap")
                 with Horizontal(classes="manage-files-action-row"):
                     yield Button(
                         "Remove Selected",
                         id="manage-files-remove",
                         disabled=True,
                     )
+                    yield Static("", classes="manage-files-button-gap")
                     yield Button("Cancel", id="manage-files-cancel")
 
     def _selection_list(self) -> SelectionList[Path] | None:
@@ -128,10 +143,12 @@ class ManageFilesScreen(ModalScreen[tuple[Path, ...] | None]):
 
     def on_mount(self) -> None:
         self.call_after_refresh(self._refresh_displayed_path_labels)
+        self.call_after_refresh(self._sync_action_button_widths)
         self._sync_remove_button()
 
     def on_resize(self, _event: events.Resize) -> None:
         self._refresh_displayed_path_labels()
+        self._sync_action_button_widths()
 
     def on_selection_list_selected_changed(
         self,
@@ -216,3 +233,23 @@ class ManageFilesScreen(ModalScreen[tuple[Path, ...] | None]):
             ]
         )
         self._sync_remove_button()
+
+    def _sync_action_button_widths(self) -> None:
+        rows = list(self.query(".manage-files-action-row"))
+        gap = list(self.query(".manage-files-button-gap"))
+        if not rows or not gap:
+            return
+
+        row_width = rows[0].size.width
+        gap_width = max(1, gap[0].size.width)
+        if row_width <= gap_width:
+            return
+
+        button_width = max(1, (row_width - gap_width) // 2)
+        for button_id in (
+            "#manage-files-select-all",
+            "#manage-files-clear-selection",
+            "#manage-files-remove",
+            "#manage-files-cancel",
+        ):
+            self.query_one(button_id, Button).styles.width = button_width

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from textual import events
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Label, SelectionList, Static
@@ -59,7 +60,19 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
 
     .select-columns-action-row Button {
         width: 1fr;
+        min-width: 0;
         margin: 0;
+    }
+
+    .select-columns-button-gap {
+        width: 1;
+        background: #20242b;
+    }
+
+    .select-columns-row-gap {
+        width: 1fr;
+        height: 1;
+        background: #20242b;
     }
     """
 
@@ -107,12 +120,15 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
             with Vertical(id="select-columns-actions"):
                 with Horizontal(classes="select-columns-action-row"):
                     yield Button("Select All", id="select-columns-select-all")
+                    yield Static("", classes="select-columns-button-gap")
                     yield Button(
                         "Clear selected",
                         id="select-columns-clear-selected",
                     )
+                yield Static("", classes="select-columns-row-gap")
                 with Horizontal(classes="select-columns-action-row"):
                     yield Button("Apply", id="select-columns-apply", disabled=True)
+                    yield Static("", classes="select-columns-button-gap")
                     yield Button("Cancel", id="select-columns-cancel")
 
     def _selection_list(self) -> SelectionList[str] | None:
@@ -142,6 +158,10 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
     def on_mount(self) -> None:
         self._enforce_locked_columns()
         self._sync_apply_button()
+        self.call_after_refresh(self._sync_action_button_widths)
+
+    def on_resize(self, _event: events.Resize) -> None:
+        self._sync_action_button_widths()
 
     def on_selection_list_selected_changed(
         self,
@@ -174,3 +194,23 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
 
         if button_id == "select-columns-cancel":
             self.dismiss(None)
+
+    def _sync_action_button_widths(self) -> None:
+        rows = list(self.query(".select-columns-action-row"))
+        gap = list(self.query(".select-columns-button-gap"))
+        if not rows or not gap:
+            return
+
+        row_width = rows[0].size.width
+        gap_width = max(1, gap[0].size.width)
+        if row_width <= gap_width:
+            return
+
+        button_width = max(1, (row_width - gap_width) // 2)
+        for button_id in (
+            "#select-columns-select-all",
+            "#select-columns-clear-selected",
+            "#select-columns-apply",
+            "#select-columns-cancel",
+        ):
+            self.query_one(button_id, Button).styles.width = button_width
