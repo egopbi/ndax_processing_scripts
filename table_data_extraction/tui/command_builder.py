@@ -10,6 +10,7 @@ from table_data_extraction.output_paths import (
 )
 
 from .models import (
+    ConvertRunConfig,
     HealthCheckRunConfig,
     PlotRunConfig,
     SubprocessCommand,
@@ -20,6 +21,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = ROOT_DIR / "scripts"
 PLOT_SCRIPT = Path("scripts/plot_ndax.py")
 TABLE_SCRIPT = Path("scripts/build_comparison_table.py")
+CONVERT_SCRIPT = Path("scripts/convert_ndax.py")
 HEALTH_SCRIPT = Path("scripts/health_check_ndax.py")
 
 
@@ -60,6 +62,22 @@ def _python_argv(python_executable: str | Path | None) -> list[str]:
 def _append_values(argv: list[str], flag: str, values: Iterable[object]) -> None:
     argv.append(flag)
     argv.extend(str(value) for value in values)
+
+
+def _normalize_columns(columns: Sequence[str]) -> tuple[str, ...]:
+    unique_columns: list[str] = []
+    seen: set[str] = set()
+    for value in columns:
+        column = str(value).strip()
+        if not column or column in seen:
+            continue
+        seen.add(column)
+        unique_columns.append(column)
+
+    normalized = tuple(unique_columns)
+    if not normalized:
+        raise ValueError("At least one column is required.")
+    return normalized
 
 
 def build_plot_command(
@@ -159,6 +177,32 @@ def build_health_check_command(
     ]
     return SubprocessCommand(
         mode="health-check",
+        argv=tuple(argv),
+        cwd=ROOT_DIR,
+    )
+
+
+def build_convert_command(
+    config: ConvertRunConfig,
+    *,
+    output_dir: str | Path | None = None,
+    python_executable: str | Path | None = None,
+) -> SubprocessCommand:
+    files = _normalize_paths(config.files)
+    columns = _normalize_columns(config.columns)
+
+    argv = [
+        *_python_argv(python_executable),
+        str(CONVERT_SCRIPT),
+    ]
+    _append_values(argv, "--files", files)
+    _append_values(argv, "--columns", columns)
+
+    if output_dir is not None:
+        argv.extend(["--output-dir", str(Path(output_dir))])
+
+    return SubprocessCommand(
+        mode="convert",
         argv=tuple(argv),
         cwd=ROOT_DIR,
     )

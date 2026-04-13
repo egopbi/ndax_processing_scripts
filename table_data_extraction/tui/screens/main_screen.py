@@ -17,6 +17,7 @@ from textual.widgets import (
 
 from table_data_extraction.reader import list_columns
 from table_data_extraction.tui.command_builder import (
+    build_convert_command,
     build_health_check_command,
     build_plot_command,
     build_table_command,
@@ -26,6 +27,7 @@ from table_data_extraction.tui.dialogs import (
     choose_output_directory,
 )
 from table_data_extraction.tui.models import (
+    ConvertRunConfig,
     HealthCheckRunConfig,
     PlotRunConfig,
     StreamChunk,
@@ -38,6 +40,9 @@ from table_data_extraction.tui.screens.advanced_options_screen import (
     AdvancedOptionsState,
 )
 from table_data_extraction.tui.screens.manage_files_screen import ManageFilesScreen
+from table_data_extraction.tui.screens.select_columns_screen import (
+    SelectColumnsScreen,
+)
 from table_data_extraction.tui.widgets.file_list import FileList
 
 
@@ -54,6 +59,9 @@ class MainScreen(Screen[None]):
             "plot": AdvancedOptionsState(mode="plot"),
             "table": AdvancedOptionsState(mode="table"),
         }
+        self._convert_common_columns: tuple[str, ...] = ()
+        self._convert_selected_columns: tuple[str, ...] = ()
+        self._convert_selection_customized = False
 
     def compose(self):
         with Vertical(id="main-shell"):
@@ -100,6 +108,7 @@ class MainScreen(Screen[None]):
                             [
                                 ("Plot", "plot"),
                                 ("Comparison Table", "table"),
+                                ("Convert", "convert"),
                             ],
                             value="plot",
                             allow_blank=False,
@@ -201,6 +210,24 @@ class MainScreen(Screen[None]):
                                         "More Options...",
                                         id="table-more-options",
                                     )
+                            with Vertical(id="convert-form", classes="mode-form"):
+                                yield Static(
+                                    "Select NDAX files to choose columns for CSV export.",
+                                    id="convert-column-helper",
+                                    classes="attention-box",
+                                )
+                                with Vertical(id="convert-column-controls"):
+                                    with Horizontal(classes="secondary-actions"):
+                                        yield Button(
+                                            "Choose Columns...",
+                                            id="convert-select-columns",
+                                            disabled=True,
+                                        )
+                                    yield Static(
+                                        "",
+                                        id="convert-selected-columns",
+                                        classes="path-value",
+                                    )
             with Horizontal(id="main-bottom-bar", classes="surface-box"):
                 yield Static("Ready", id="run-status")
                 yield Static("", classes="spacer")
@@ -210,7 +237,9 @@ class MainScreen(Screen[None]):
     @property
     def current_mode(self) -> str:
         value = self.query_one("#mode-select", Select).value
-        return "table" if value == "table" else "plot"
+        if value in {"plot", "table", "convert"}:
+            return str(value)
+        return "plot"
 
     @property
     def active_file_list(self) -> FileList:
@@ -245,6 +274,110 @@ class MainScreen(Screen[None]):
         if helper_text is not None:
             helper.update(helper_text)
         controls.display = show_controls
+
+    @staticmethod
+    def _time_column(columns: tuple[str, ...]) -> str | None:
+        for column in columns:
+            if column.strip().casefold() == "time":
+                return column
+        return None
+
+    def _convert_locked_columns(self) -> tuple[str, ...]:
+        time_column = self._time_column(self._convert_common_columns)
+        if time_column is None:
+            return ()
+        return (time_column,)
+
+    def _sync_convert_selected_columns_display(self) -> None:
+        info = self.query_one("#convert-selected-columns", Static)
+        if not self._convert_common_columns:
+            info.update("")
+            return
+        if not self._convert_selected_columns:
+            info.update("Selected columns: none")
+            return
+        info.update(
+            "Selected columns: "
+            + ", ".join(self._convert_selected_columns)
+        )
+
+    def _set_convert_column_state(
+        self,
+        *,
+        helper_text: str | None,
+        show_controls: bool,
+        button_enabled: bool,
+    ) -> None:
+        helper = self.query_one("#convert-column-helper", Static)
+        controls = self.query_one("#convert-column-controls", Vertical)
+        button = self.query_one("#convert-select-columns", Button)
+        helper.display = helper_text is not None
+        if helper_text is not None:
+            helper.update(helper_text)
+        controls.display = show_controls
+        button.disabled = not button_enabled
+        self._sync_convert_selected_columns_display()
+
+    def _refresh_convert_columns(
+        self,
+        paths: tuple[Path, ...],
+        *,
+        log_errors: bool = True,
+    ) -> None:
+        try:
+            columns = self._collect_columns(paths)
+        except Exception as error:
+            self._convert_common_columns = ()
+            self._convert_selected_columns = ()
+            self._convert_selection_customized = False
+            if log_errors:
+                self._log(f"Failed to load columns for convert: {error}")
+            self._set_convert_column_state(
+                helper_text="Failed to load column names.",
+                show_controls=False,
+                button_enabled=False,
+            )
+            return
+
+        self._convert_common_columns = columns
+        if not paths:
+            self._convert_selected_columns = ()
+            self._convert_selection_customized = False
+            self._set_convert_column_state(
+                helper_text="Select NDAX files to choose columns for CSV export.",
+                show_controls=False,
+                button_enabled=False,
+            )
+            return
+
+        if not columns:
+            self._convert_selected_columns = ()
+            self._convert_selection_customized = False
+            self._set_convert_column_state(
+                helper_text="No common columns found in the selected files.",
+                show_controls=False,
+                button_enabled=False,
+            )
+            return
+
+        if self._convert_selection_customized:
+            selected = tuple(
+                column
+                for column in self._convert_selected_columns
+                if column in set(columns)
+            )
+        else:
+            selected = columns
+
+        for locked in self._convert_locked_columns():
+            if locked not in selected:
+                selected = (*selected, locked)
+        self._convert_selected_columns = selected
+        self._set_convert_column_state(
+            helper_text=None,
+            show_controls=True,
+            button_enabled=True,
+        )
 
     def refresh_state_from_app(self) -> None:
         output_dir = getattr(self.app, "current_output_dir", None)
@@ -298,11 +431,18 @@ class MainScreen(Screen[None]):
             return
         select.value = preferred if preferred in columns else columns[0]
 
-    def _refresh_column_selects(self, mode: str, paths: tuple[Path, ...]) -> None:
+    def _refresh_column_selects(
+        self,
+        mode: str,
+        paths: tuple[Path, ...],
+        *,
+        log_errors: bool = True,
+    ) -> None:
         try:
             columns = self._collect_columns(paths)
         except Exception as error:
-            self._log(f"Failed to load columns for {mode}: {error}")
+            if log_errors:
+                self._log(f"Failed to load columns for {mode}: {error}")
             self._set_column_state(
                 mode,
                 helper_text="Failed to load column names.",
@@ -408,6 +548,14 @@ class MainScreen(Screen[None]):
                 ),
                 output_dir=self.app.current_output_dir,
             )
+        if mode == "convert":
+            return build_convert_command(
+                ConvertRunConfig(
+                    files=files,
+                    columns=self._convert_selected_columns,
+                ),
+                output_dir=self.app.current_output_dir,
+            )
 
         advanced = self._advanced_state["plot"]
         return build_plot_command(
@@ -507,9 +655,18 @@ class MainScreen(Screen[None]):
 
     def _on_file_list_paths_changed(self, paths: tuple[Path, ...]) -> None:
         active_mode = self.current_mode
-        passive_mode = "table" if active_mode == "plot" else "plot"
-        self._refresh_column_selects(passive_mode, paths)
-        self._refresh_column_selects(active_mode, paths)
+        for mode in ("plot", "table", "convert"):
+            if mode == active_mode:
+                continue
+            if mode == "convert":
+                self._refresh_convert_columns(paths, log_errors=False)
+            else:
+                self._refresh_column_selects(mode, paths, log_errors=False)
+
+        if active_mode == "convert":
+            self._refresh_convert_columns(paths, log_errors=True)
+        else:
+            self._refresh_column_selects(active_mode, paths, log_errors=True)
 
     def _choose_files_in_thread(self) -> None:
         selected = choose_ndax_files(initial_dir=self.app.current_output_dir)
@@ -529,6 +686,14 @@ class MainScreen(Screen[None]):
         if result is None:
             return
         self.active_file_list.set_paths(result)
+
+    def _convert_columns_closed(self, result: tuple[str, ...] | None) -> None:
+        if result is None:
+            return
+        self._convert_selected_columns = result
+        self._convert_selection_customized = True
+        self._sync_convert_selected_columns_display()
+        self._log("Convert columns updated.")
 
     def _advanced_options_closed(
         self,
@@ -555,8 +720,24 @@ class MainScreen(Screen[None]):
             self._advanced_options_closed,
         )
 
+    def _open_convert_columns(self) -> None:
+        self.app.push_screen(
+            SelectColumnsScreen(
+                self._convert_common_columns,
+                selected_columns=self._convert_selected_columns,
+                locked_columns=self._convert_locked_columns(),
+            ),
+            self._convert_columns_closed,
+        )
+
     def _sync_mode_form(self) -> None:
-        form_id = "table-form" if self.current_mode == "table" else "plot-form"
+        mode = self.current_mode
+        if mode == "table":
+            form_id = "table-form"
+        elif mode == "convert":
+            form_id = "convert-form"
+        else:
+            form_id = "plot-form"
         self.query_one("#mode-forms", ContentSwitcher).current = form_id
 
     def action_open_settings(self) -> None:
@@ -626,6 +807,11 @@ class MainScreen(Screen[None]):
             self.query_one("#mode-select", Select).value = "table"
             self._sync_mode_form()
             self._open_advanced_options()
+            return
+        if button_id == "convert-select-columns":
+            self.query_one("#mode-select", Select).value = "convert"
+            self._sync_mode_form()
+            self._open_convert_columns()
             return
         if button_id == "select-output-dir":
             threading.Thread(

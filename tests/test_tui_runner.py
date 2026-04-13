@@ -3,11 +3,13 @@ import sys
 import threading
 
 from table_data_extraction.tui.command_builder import (
+    build_convert_command,
     build_health_check_command,
     build_plot_command,
     build_table_command,
 )
 from table_data_extraction.tui.models import (
+    ConvertRunConfig,
     HealthCheckRunConfig,
     PlotRunConfig,
     SubprocessCommand,
@@ -89,6 +91,37 @@ def test_build_health_check_command_targets_script() -> None:
     )
 
 
+def test_build_convert_command_passes_columns_and_output_dir(tmp_path: Path) -> None:
+    command = build_convert_command(
+        ConvertRunConfig(
+            files=(
+                Path("examples/example1_1.ndax"),
+                Path("examples/example2_2.ndax"),
+            ),
+            columns=("Time", "Voltage", "Current(mA)"),
+        ),
+        output_dir=tmp_path,
+        python_executable="python-test",
+    )
+
+    assert command.mode == "convert"
+    assert command.argv[:2] == ("python-test", "-u")
+    assert command.argv[2:4] == (str(Path("scripts/convert_ndax.py")), "--files")
+    files_index = command.argv.index("--files")
+    assert command.argv[files_index + 1:files_index + 3] == (
+        "examples/example1_1.ndax",
+        "examples/example2_2.ndax",
+    )
+    columns_index = command.argv.index("--columns")
+    assert command.argv[columns_index + 1:columns_index + 4] == (
+        "Time",
+        "Voltage",
+        "Current(mA)",
+    )
+    assert command.argv[-2:] == ("--output-dir", str(tmp_path))
+    assert command.output_path is None
+
+
 def test_build_plot_command_rejects_mismatched_labels() -> None:
     try:
         build_plot_command(
@@ -105,6 +138,20 @@ def test_build_plot_command_rejects_mismatched_labels() -> None:
         assert "labels" in str(error).lower()
     else:
         raise AssertionError("Expected label validation failure.")
+
+
+def test_build_convert_command_rejects_empty_columns() -> None:
+    try:
+        build_convert_command(
+            ConvertRunConfig(
+                files=(Path("examples/example1_1.ndax"),),
+                columns=(),
+            )
+        )
+    except ValueError as error:
+        assert "column" in str(error).lower()
+    else:
+        raise AssertionError("Expected column validation failure.")
 
 
 def test_run_subprocess_command_captures_stdout_and_stderr() -> None:

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-RunMode = Literal["plot", "table", "health-check"]
+RunMode = Literal["plot", "table", "convert", "health-check"]
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,12 @@ class TableRunConfig:
     x_column: str = "Time"
     labels: tuple[str, ...] | None = None
     output_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class ConvertRunConfig:
+    files: tuple[Path, ...]
+    columns: tuple[str, ...]
 
 
 @dataclass(frozen=True)
