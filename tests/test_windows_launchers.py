@@ -67,6 +67,7 @@ def test_readme_is_windows_only_and_uses_helper_scripts() -> None:
     assert ".\\setup_windows.cmd" in content
     assert ".\\plot_ndax.cmd" in content
     assert ".\\build_comparison_table.cmd" in content
+    assert ".\\convert_ndax.cmd" in content
     assert "macOS" not in content
     assert "python3 scripts/plot_ndax.py" not in content
     assert "python3 scripts/build_comparison_table.py" not in content

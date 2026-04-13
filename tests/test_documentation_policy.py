@@ -53,6 +53,10 @@ def test_readme_uses_shipped_example_paths_for_first_run_commands() -> None:
         r".\build_comparison_table.cmd --files examples\example1_1.ndax --y-column Voltage --anchor-x 0.5"
         in readme
     )
+    assert (
+        r'.\convert_ndax.cmd --files examples\example1_1.ndax --columns Voltage "Current(mA)"'
+        in readme
+    )
     assert r"data\sample.ndax" not in readme
     assert "в первой строке заголовка" not in readme
 
@@ -65,6 +69,7 @@ def test_canonical_technical_docs_exist_and_reference_entrypoints_and_config() -
 
     assert "scripts/plot_ndax.py" in combined_docs
     assert "scripts/build_comparison_table.py" in combined_docs
+    assert "scripts/convert_ndax.py" in combined_docs
     assert "project_config.yaml" in combined_docs
     assert "table_data_extraction.project_config" in combined_docs
 

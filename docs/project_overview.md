@@ -2,10 +2,11 @@
 
 ## Purpose
 
-This repository provides NDAX file tooling for two supported workflows:
+This repository provides NDAX file tooling for three supported workflows:
 
 - plotting one or more files through the Windows launcher `plot_ndax.cmd` and the Python entrypoint `scripts/plot_ndax.py`
 - building a comparison table through `build_comparison_table.cmd` and `scripts/build_comparison_table.py`
+- converting one or more NDAX files to CSV slices through `convert_ndax.cmd` and `scripts/convert_ndax.py`
 
 The public runtime policy is `Python >= 3.12`. The repository pin in `.python-version` stays on `3.12` for local tooling.
 
@@ -13,9 +14,16 @@ The public runtime policy is `Python >= 3.12`. The repository pin in `.python-ve
 
 - `scripts/plot_ndax.py`: CLI wrapper for plot generation
 - `scripts/build_comparison_table.py`: CLI wrapper for comparison-table generation
+- `scripts/convert_ndax.py`: CLI wrapper for NDAX-to-CSV conversion by selected columns
 - `scripts/health_check_ndax.py`: focused CLI for dataset validation
 - `table_data_extraction/`: shared domain logic for loading, preprocessing, plotting, extrema detection, export, and config access
 - `project_config.yaml`: repository-level defaults for output paths, plotting defaults, CSV defaults, and comparison-table tuning
+
+Convert mode behavior contract:
+
+- one CSV output per input `.ndax` file
+- automatic inclusion of the `Time` column in every converted CSV
+- no filename override in the TUI `convert` mode; output location is controlled by `--output-dir` / runtime output directory
 
 ## Configuration Contract
 

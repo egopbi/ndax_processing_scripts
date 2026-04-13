@@ -23,6 +23,8 @@ If a change adds or renames config keys, update:
 - Historical plans and specs should not be reintroduced into git as durable repo docs.
 - Local temporary planning files are not canonical docs.
 - Keep the canonical technical docs compact and durable enough for future coding agents to recover the current entrypoints and config model quickly.
+- Public docs must describe all current user workflows: plot, comparison table, and convert.
+- Convert workflow docs must preserve the contract: selected-column CSV slices, automatic `Time` inclusion, one output CSV per input NDAX file, and no filename override in TUI convert mode.
 
 ## Focused Verification
 
