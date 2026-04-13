@@ -22,7 +22,9 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
 
     #select-columns-dialog {
         width: 80%;
-        max-height: 18;
+        height: 85%;
+        max-height: 24;
+        min-height: 12;
         background: #20242b;
         border: ascii #6db7ff;
         padding: 1 2;
@@ -30,12 +32,20 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
 
     #select-columns-list {
         margin-top: 1;
-        height: auto;
-        max-height: 8;
+        height: 1fr;
+        min-height: 3;
         border: ascii #343a43;
+        scrollbar-background: #0f1216;
+        scrollbar-background-hover: #0f1216;
+        scrollbar-background-active: #0f1216;
+        scrollbar-color: #6db7ff;
+        scrollbar-color-hover: #8cc8ff;
+        scrollbar-color-active: #6db7ff;
+        scrollbar-gutter: stable;
     }
 
     #select-columns-actions {
+        dock: bottom;
         height: auto;
         margin-top: 1;
     }

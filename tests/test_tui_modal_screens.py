@@ -15,6 +15,9 @@ from table_data_extraction.tui.screens.select_columns_screen import (
     SelectColumnsScreen,
 )
 
+PROJECT_BLUE_RGB = (109, 183, 255)
+PROJECT_BLUE_HOVER_RGB = (140, 200, 255)
+
 
 class _ScreenHarnessApp(App[None]):
     AUTO_FOCUS = ""
@@ -90,6 +93,66 @@ def test_manage_files_screen_handles_empty_state() -> None:
             await pilot.click("#manage-files-cancel")
             await pilot.pause()
             assert app.screen_result is None
+
+    asyncio.run(_run())
+
+
+def test_manage_files_screen_keeps_action_buttons_visible_on_tight_viewport() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            ManageFilesScreen(
+                [Path(f"/very/long/path/to/cycles/run_{index:02d}/sample_{index:02d}.ndax") for index in range(30)]
+            )
+        )
+        async with app.run_test(size=(84, 20)) as pilot:
+            await pilot.pause()
+            viewport_height = app.screen.size.height
+
+            for button_id in (
+                "#manage-files-select-all",
+                "#manage-files-clear-selection",
+                "#manage-files-remove",
+                "#manage-files-cancel",
+            ):
+                button = app.screen.query_one(button_id, Button)
+                assert button.region.height > 0
+                assert button.region.y + button.region.height <= viewport_height
+
+    asyncio.run(_run())
+
+
+def test_manage_files_screen_scrollbar_uses_project_blue() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(ManageFilesScreen([Path(f"sample_{index:02d}.ndax") for index in range(40)]))
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            selection_list = app.screen.query_one("#manage-files-list", SelectionList)
+
+            assert selection_list.styles.scrollbar_color.rgb == PROJECT_BLUE_RGB
+            assert selection_list.styles.scrollbar_color_hover.rgb == PROJECT_BLUE_HOVER_RGB
+            assert selection_list.styles.scrollbar_color_active.rgb == PROJECT_BLUE_RGB
+
+    asyncio.run(_run())
+
+
+def test_manage_files_screen_displays_tail_of_long_paths() -> None:
+    async def _run() -> None:
+        long_path = Path(
+            "/mnt/storage/users/alex/very/deep/location/for/ndax/files/final-parent/sample_001.ndax"
+        )
+        app = _ScreenHarnessApp(ManageFilesScreen([long_path]))
+        async with app.run_test(size=(68, 20)) as pilot:
+            await pilot.pause()
+            selection_list = app.screen.query_one("#manage-files-list", SelectionList)
+            option_text = str(selection_list.get_option_at_index(0).prompt)
+
+            assert option_text.startswith("...")
+            assert option_text.endswith("final-parent/sample_001.ndax")
+            assert "/mnt/storage/users" not in option_text
+
+            selection_list.select(long_path)
+            await pilot.pause()
+            assert selection_list.selected == [long_path]
 
     asyncio.run(_run())
 
@@ -191,5 +254,49 @@ def test_select_columns_screen_handles_empty_state() -> None:
             await pilot.click("#select-columns-cancel")
             await pilot.pause()
             assert app.screen_result is None
+
+    asyncio.run(_run())
+
+
+def test_select_columns_screen_keeps_action_buttons_visible_on_tight_viewport() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                [f"Column {index:02d}" for index in range(40)],
+                selected_columns=["Column 00"],
+            )
+        )
+        async with app.run_test(size=(84, 20)) as pilot:
+            await pilot.pause()
+            viewport_height = app.screen.size.height
+
+            for button_id in (
+                "#select-columns-select-all",
+                "#select-columns-clear-selected",
+                "#select-columns-apply",
+                "#select-columns-cancel",
+            ):
+                button = app.screen.query_one(button_id, Button)
+                assert button.region.height > 0
+                assert button.region.y + button.region.height <= viewport_height
+
+    asyncio.run(_run())
+
+
+def test_select_columns_screen_scrollbar_uses_project_blue() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                [f"Column {index:02d}" for index in range(40)],
+                selected_columns=["Column 00"],
+            )
+        )
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            selection_list = app.screen.query_one("#select-columns-list", SelectionList)
+
+            assert selection_list.styles.scrollbar_color.rgb == PROJECT_BLUE_RGB
+            assert selection_list.styles.scrollbar_color_hover.rgb == PROJECT_BLUE_HOVER_RGB
+            assert selection_list.styles.scrollbar_color_active.rgb == PROJECT_BLUE_RGB
 
     asyncio.run(_run())
