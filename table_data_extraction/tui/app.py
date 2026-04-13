@@ -206,6 +206,14 @@ class NdaxTuiApp(App[None]):
     Checkbox {
         width: 1fr;
         margin: 0 0 1 0;
+        padding: 0 1;
+        background: #1d2228;
+        border: ascii #343a43;
+        color: #e5e7eb;
+    }
+
+    Checkbox:focus {
+        border: ascii #6db7ff;
     }
 
     #plot-output-override-section {
@@ -213,13 +221,7 @@ class NdaxTuiApp(App[None]):
         height: auto;
     }
 
-    #plot-output-override-section.is-disabled {
-        background: #1a1e24;
-        border: ascii #2a2f36;
-        padding: 0 1 0 1;
-    }
-
-    #plot-output-override-section.is-disabled Input {
+    #plot-output-override.is-disabled {
         background: #1a1e24;
         border: ascii #2a2f36;
         color: #7b8390;

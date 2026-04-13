@@ -619,9 +619,9 @@ def test_plot_output_override_is_dimmed_and_disabled_when_separate_enabled() -> 
             main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
             separate_checkbox = app.screen.query_one("#plot-separate", Checkbox)
             override_input = app.screen.query_one("#plot-output-override", Input)
-            override_section = app.screen.query_one("#plot-output-override-section")
+            initial_region = override_input.region
             assert not override_input.disabled
-            assert "is-disabled" not in set(override_section.classes)
+            assert "is-disabled" not in set(override_input.classes)
 
             main_scroll.scroll_to_widget(
                 separate_checkbox,
@@ -633,14 +633,29 @@ def test_plot_output_override_is_dimmed_and_disabled_when_separate_enabled() -> 
             await pilot.pause()
 
             assert override_input.disabled
-            assert "is-disabled" in set(override_section.classes)
-            assert override_section.styles.background.rgb == (26, 30, 36)
+            assert "is-disabled" in set(override_input.classes)
+            assert override_input.styles.background.rgb == (26, 30, 36)
+            assert override_input.region.height == initial_region.height
+            assert override_input.region.width == initial_region.width
 
             await pilot.click("#plot-separate")
             await pilot.pause()
 
             assert not override_input.disabled
-            assert "is-disabled" not in set(override_section.classes)
+            assert "is-disabled" not in set(override_input.classes)
+            assert override_input.region.height == initial_region.height
+            assert override_input.region.width == initial_region.width
+
+    asyncio.run(_run())
+
+
+def test_plot_separate_checkbox_uses_ascii_border() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            separate_checkbox = app.screen.query_one("#plot-separate", Checkbox)
+            assert separate_checkbox.styles.border_top[0] == "ascii"
 
     asyncio.run(_run())
 

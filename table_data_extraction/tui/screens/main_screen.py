@@ -536,12 +536,8 @@ class MainScreen(Screen[None]):
     def _sync_plot_output_override_state(self) -> None:
         separate_enabled = self._plot_separate_enabled()
         override_input = self.query_one("#plot-output-override", Input)
-        override_section = self.query_one("#plot-output-override-section", Vertical)
         override_input.disabled = separate_enabled
-        if separate_enabled:
-            override_section.add_class("is-disabled")
-        else:
-            override_section.remove_class("is-disabled")
+        override_input.set_class(separate_enabled, "is-disabled")
 
     def _build_active_command(self):
         mode = self.current_mode
