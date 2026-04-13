@@ -8,6 +8,10 @@ from textual.widgets import Button, Input, Select, Static, SelectionList
 from textual.containers import VerticalScroll
 
 from table_data_extraction.tui.app import NdaxTuiApp
+from table_data_extraction.tui.models import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+)
 from table_data_extraction.tui.widgets.file_list import FileList
 from table_data_extraction.tui.widgets.palette_preview import PalettePreview
 
@@ -263,14 +267,30 @@ def test_plot_more_options_image_size_section_matches_settings_layout() -> None:
             height_label = app.screen.query_one("#advanced-label-output-height", Static)
             width_input = app.screen.query_one("#advanced-output-width", Input)
             height_input = app.screen.query_one("#advanced-output-height", Input)
+            labels_input = app.screen.query_one("#advanced-labels", Input)
+            section_ids = [widget.id for widget in app.screen.query(".section-shell")]
 
             assert section.has_class("section-shell")
             assert labels_section.has_class("section-shell")
+            assert section_ids[:2] == [
+                "advanced-output-size-section",
+                "advanced-labels-section",
+            ]
             assert title.content == "Plot Options"
             assert labels_label.content == "Labels, comma separated"
+            assert width_input.value == str(DEFAULT_PLOT_OUTPUT_WIDTH_PX)
+            assert height_input.value == str(DEFAULT_PLOT_OUTPUT_HEIGHT_PX)
+            assert section.region.y < labels_section.region.y
             assert width_label.region.y < width_input.region.y
             assert height_label.region.y < height_input.region.y
             assert width_input.region.y < height_input.region.y
+            assert height_input.region.y < labels_input.region.y
+            for widget in (section, labels_section, width_input, height_input, labels_input):
+                border = widget.styles.border
+                assert border.top[0] == "ascii"
+                assert border.right[0] == "ascii"
+                assert border.bottom[0] == "ascii"
+                assert border.left[0] == "ascii"
             assert all(
                 ord(character) < 128
                 for character in title.content
@@ -294,12 +314,22 @@ def test_plot_more_options_scrolls_height_input_into_view_on_tight_viewport() ->
             await pilot.pause()
 
             scroll = app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+            width_input = app.screen.query_one("#advanced-output-width", Input)
             height_input = app.screen.query_one("#advanced-output-height", Input)
+            labels_input = app.screen.query_one("#advanced-labels", Input)
 
             scroll.scroll_to_widget(height_input, animate=False, immediate=True)
             await pilot.pause()
+            scroll.scroll_to_widget(labels_input, animate=False, immediate=True)
+            await pilot.pause()
 
-            assert height_input.region.height > 0
+            assert width_input.region.height >= 3
+            assert height_input.region.height >= 3
+            assert labels_input.region.height >= 3
+            assert width_input.region.height == height_input.region.height
+            assert scroll.styles.scrollbar_color.rgb == PROJECT_BLUE_RGB
+            assert scroll.styles.scrollbar_color_hover.rgb == PROJECT_BLUE_HOVER_RGB
+            assert scroll.styles.scrollbar_color_active.rgb == PROJECT_BLUE_RGB
             assert scroll.scroll_offset.y > 0
             for button_id in (
                 "#advanced-save",

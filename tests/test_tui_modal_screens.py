@@ -231,6 +231,7 @@ def test_advanced_options_screen_saves_plot_values() -> None:
         )
         async with app.run_test(size=(90, 30)) as pilot:
             assert app.screen.query_one("#advanced-options-title", Static).content == "Plot Options"
+            scroll = app.screen.query_one("#advanced-options-scroll", VerticalScroll)
             size_section = app.screen.query_one("#advanced-output-size-section")
             labels_section = app.screen.query_one("#advanced-labels-section")
             width_label = app.screen.query_one("#advanced-label-output-width", Static)
@@ -238,19 +239,28 @@ def test_advanced_options_screen_saves_plot_values() -> None:
             height_label = app.screen.query_one("#advanced-label-output-height", Static)
             height_input = app.screen.query_one("#advanced-output-height", Input)
             labels_input = app.screen.query_one("#advanced-labels", Input)
+            section_ids = [widget.id for widget in app.screen.query(".section-shell")]
             assert size_section.has_class("section-shell")
             assert labels_section.has_class("section-shell")
+            assert section_ids[:2] == [
+                "advanced-output-size-section",
+                "advanced-labels-section",
+            ]
             assert app.screen.query_one("#advanced-options-title", Static).content == "Plot Options"
             assert width_label.content == "Width (px)"
             assert height_label.content == "Height (px)"
             assert width_input.value == str(DEFAULT_PLOT_OUTPUT_WIDTH_PX)
             assert height_input.value == str(DEFAULT_PLOT_OUTPUT_HEIGHT_PX)
+            assert size_section.region.y < labels_section.region.y
             assert size_section.region.y < labels_input.region.y
             assert width_input.region.y < height_input.region.y
             assert (
                 app.screen.query_one("#advanced-labels-label", Static).content
                 == "Labels, comma separated"
             )
+            assert scroll.styles.scrollbar_color.rgb == PROJECT_BLUE_RGB
+            assert scroll.styles.scrollbar_color_hover.rgb == PROJECT_BLUE_HOVER_RGB
+            assert scroll.styles.scrollbar_color_active.rgb == PROJECT_BLUE_RGB
             app.screen.query_one("#advanced-labels", Input).value = "a, b, c"
             width_input.value = "1800"
             height_input.value = "1200"
@@ -313,12 +323,19 @@ def test_advanced_options_screen_keeps_actions_visible_on_tight_viewport() -> No
             await pilot.pause()
             viewport_height = app.screen.size.height
             scroll = app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+            width_input = app.screen.query_one("#advanced-output-width", Input)
             height_input = app.screen.query_one("#advanced-output-height", Input)
+            labels_input = app.screen.query_one("#advanced-labels", Input)
 
             scroll.scroll_to_widget(height_input, animate=False, immediate=True)
             await pilot.pause()
+            scroll.scroll_to_widget(labels_input, animate=False, immediate=True)
+            await pilot.pause()
 
             assert app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+            assert width_input.region.height >= 1
+            assert height_input.region.height >= 1
+            assert labels_input.region.height >= 1
             assert height_input.region.y + height_input.region.height <= (
                 scroll.region.y + scroll.region.height
             )
