@@ -11,6 +11,10 @@ from .reader import load_ndax_dataframe
 TIME_COLUMN = "Time"
 
 
+def _output_collision_key(path: Path) -> str:
+    return str(path.absolute()).casefold()
+
+
 def _requested_columns_with_time(columns: Sequence[str]) -> list[str]:
     requested = [str(column) for column in columns]
     if not requested:
@@ -42,23 +46,80 @@ def resolve_convert_columns(
     return resolved
 
 
+def _build_convert_jobs(
+    *,
+    source_paths: Sequence[str | Path],
+    output_dir: str | Path | None = None,
+) -> list[tuple[Path, Path]]:
+    jobs: list[tuple[Path, Path]] = []
+    for source_path in source_paths:
+        source = Path(source_path)
+        jobs.append(
+            (
+                source,
+                default_convert_output_path(
+                    source_path=source,
+                    output_dir=output_dir,
+                ),
+            )
+        )
+    return jobs
+
+
+def _validate_unique_output_paths(jobs: Sequence[tuple[Path, Path]]) -> None:
+    collisions: dict[str, list[tuple[Path, Path]]] = {}
+    for source_path, output_path in jobs:
+        key = _output_collision_key(output_path)
+        collisions.setdefault(key, []).append((source_path, output_path))
+
+    duplicated = [entries for entries in collisions.values() if len(entries) > 1]
+    if not duplicated:
+        return
+
+    collision_details = []
+    for entries in duplicated:
+        output_path = entries[0][1]
+        sources = ", ".join(str(source_path) for source_path, _ in entries)
+        collision_details.append(
+            f"{output_path}: {sources}"
+        )
+    raise ValueError(
+        "Output path collision detected in convert mode. "
+        "Input files must resolve to unique output CSV paths. "
+        f"Collisions: {'; '.join(collision_details)}"
+    )
+
+
+def _convert_single_file(
+    *,
+    source_path: Path,
+    output_path: Path,
+    columns: Sequence[str],
+) -> Path:
+    dataframe = load_ndax_dataframe(source_path)
+    resolved_columns = resolve_convert_columns(dataframe, columns)
+    return save_csv_slice(
+        dataframe,
+        columns=resolved_columns,
+        output_path=output_path,
+    )
+
+
 def convert_ndax_file(
     *,
     source_path: str | Path,
     columns: Sequence[str],
     output_dir: str | Path | None = None,
 ) -> Path:
-    source = Path(source_path)
-    dataframe = load_ndax_dataframe(source)
-    resolved_columns = resolve_convert_columns(dataframe, columns)
-    output_path = default_convert_output_path(
-        source_path=source,
+    jobs = _build_convert_jobs(
+        source_paths=[source_path],
         output_dir=output_dir,
     )
-    return save_csv_slice(
-        dataframe,
-        columns=resolved_columns,
-        output_path=output_path,
+    source, output = jobs[0]
+    return _convert_single_file(
+        source_path=source,
+        output_path=output,
+        columns=columns,
     )
 
 
@@ -71,13 +132,19 @@ def convert_ndax_files(
     if not source_paths:
         raise ValueError("At least one NDAX file path must be provided.")
 
+    jobs = _build_convert_jobs(
+        source_paths=source_paths,
+        output_dir=output_dir,
+    )
+    _validate_unique_output_paths(jobs)
+
     outputs: list[Path] = []
-    for source_path in source_paths:
+    for source_path, output_path in jobs:
         outputs.append(
-            convert_ndax_file(
+            _convert_single_file(
                 source_path=source_path,
+                output_path=output_path,
                 columns=columns,
-                output_dir=output_dir,
             )
         )
     return outputs
