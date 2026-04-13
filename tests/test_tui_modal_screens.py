@@ -10,6 +10,10 @@ from table_data_extraction.tui.screens.advanced_options_screen import (
     AdvancedOptionsResult,
     AdvancedOptionsScreen,
 )
+from table_data_extraction.tui.models import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+)
 from table_data_extraction.tui.screens.manage_files_screen import ManageFilesScreen
 from table_data_extraction.tui.screens.select_columns_screen import (
     SelectColumnsScreen,
@@ -226,9 +230,29 @@ def test_advanced_options_screen_saves_plot_values() -> None:
         )
         async with app.run_test(size=(90, 30)) as pilot:
             assert app.screen.query_one("#advanced-options-title", Static).content == "Plot Options"
+            size_section = app.screen.query_one("#advanced-output-size-section")
+            labels_section = app.screen.query_one("#advanced-labels-section")
+            width_label = app.screen.query_one("#advanced-label-output-width", Static)
+            width_input = app.screen.query_one("#advanced-output-width", Input)
+            height_label = app.screen.query_one("#advanced-label-output-height", Static)
+            height_input = app.screen.query_one("#advanced-output-height", Input)
+            labels_input = app.screen.query_one("#advanced-labels", Input)
+            assert size_section.has_class("section-shell")
+            assert labels_section.has_class("section-shell")
+            assert app.screen.query_one("#advanced-options-title", Static).content == "Plot Options"
+            assert width_label.content == "Width (px)"
+            assert height_label.content == "Height (px)"
+            assert width_input.value == str(DEFAULT_PLOT_OUTPUT_WIDTH_PX)
+            assert height_input.value == str(DEFAULT_PLOT_OUTPUT_HEIGHT_PX)
+            assert size_section.region.y < labels_input.region.y
+            assert width_input.region.y < height_input.region.y
+            assert (
+                app.screen.query_one("#advanced-labels-label", Static).content
+                == "Labels, comma separated"
+            )
             app.screen.query_one("#advanced-labels", Input).value = "a, b, c"
-            with pytest.raises(NoMatches):
-                app.screen.query_one("#advanced-output", Input)
+            width_input.value = "1800"
+            height_input.value = "1200"
             await pilot.click("#advanced-save")
             await pilot.pause()
 
@@ -239,6 +263,8 @@ def test_advanced_options_screen_saves_plot_values() -> None:
             assert app.screen_result.state.mode == "plot"
             assert app.screen_result.state.labels == "a, b, c"
             assert app.screen_result.state.output_override == "plot.jpg"
+            assert app.screen_result.state.output_width_px == "1800"
+            assert app.screen_result.state.output_height_px == "1200"
 
     asyncio.run(_run())
 
@@ -257,8 +283,11 @@ def test_advanced_options_screen_can_request_health_check_for_table() -> None:
                 app.screen.query_one("#advanced-options-title", Static).content
                 == "Comparison Table Options"
             )
+            assert app.screen.query_one("#advanced-labels-section")
             with pytest.raises(NoMatches):
-                app.screen.query_one("#advanced-output", Input)
+                app.screen.query_one("#advanced-output-size-section")
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#advanced-output-width", Input)
             await pilot.click("#advanced-health-check")
             await pilot.pause()
 

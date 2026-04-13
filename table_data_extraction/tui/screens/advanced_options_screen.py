@@ -7,6 +7,11 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 
+from table_data_extraction.plot_dimensions import (
+    DEFAULT_PLOT_OUTPUT_HEIGHT_PX,
+    DEFAULT_PLOT_OUTPUT_WIDTH_PX,
+)
+
 AdvancedMode = Literal["plot", "table"]
 AdvancedAction = Literal["save", "health-check"]
 
@@ -16,6 +21,8 @@ class AdvancedOptionsState:
     mode: AdvancedMode
     labels: str = ""
     output_override: str = ""
+    output_width_px: str = str(DEFAULT_PLOT_OUTPUT_WIDTH_PX)
+    output_height_px: str = str(DEFAULT_PLOT_OUTPUT_HEIGHT_PX)
 
 
 @dataclass(frozen=True)
@@ -55,11 +62,15 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
         mode: AdvancedMode,
         labels: str = "",
         output_override: str = "",
+        output_width_px: str = str(DEFAULT_PLOT_OUTPUT_WIDTH_PX),
+        output_height_px: str = str(DEFAULT_PLOT_OUTPUT_HEIGHT_PX),
     ) -> None:
         super().__init__()
         self._mode = mode
         self._labels = labels
         self._output_override = output_override
+        self._output_width_px = output_width_px
+        self._output_height_px = output_height_px
 
     @property
     def _title(self) -> str:
@@ -74,11 +85,29 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
                 "Adjust labels or run a health check without changing the main layout.",
                 id="advanced-options-description",
             )
-            yield Input(
-                value=self._labels,
-                placeholder="Labels, comma separated",
-                id="advanced-labels",
-            )
+            if self._mode == "plot":
+                with Vertical(
+                    id="advanced-output-size-section",
+                    classes="section-shell",
+                ):
+                    yield Label("Image size", classes="section-title")
+                    yield Label("Width (px)", id="advanced-label-output-width")
+                    yield Input(
+                        value=self._output_width_px,
+                        id="advanced-output-width",
+                    )
+                    yield Label("Height (px)", id="advanced-label-output-height")
+                    yield Input(
+                        value=self._output_height_px,
+                        id="advanced-output-height",
+                    )
+            with Vertical(id="advanced-labels-section", classes="section-shell"):
+                yield Label("Labels", classes="section-title")
+                yield Label(
+                    "Labels, comma separated",
+                    id="advanced-labels-label",
+                )
+                yield Input(value=self._labels, id="advanced-labels")
             with Horizontal(id="advanced-options-actions"):
                 yield Button("Save", id="advanced-save")
                 yield Button("Run Health Check", id="advanced-health-check")
@@ -92,6 +121,16 @@ class AdvancedOptionsScreen(ModalScreen[AdvancedOptionsResult | None]):
                 mode=self._mode,
                 labels=self.query_one("#advanced-labels", Input).value,
                 output_override=self._output_override,
+                output_width_px=(
+                    self.query_one("#advanced-output-width", Input).value
+                    if self._mode == "plot"
+                    else self._output_width_px
+                ),
+                output_height_px=(
+                    self.query_one("#advanced-output-height", Input).value
+                    if self._mode == "plot"
+                    else self._output_height_px
+                ),
             ),
         )
 
