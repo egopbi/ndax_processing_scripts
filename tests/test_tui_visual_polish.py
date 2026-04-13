@@ -281,6 +281,37 @@ def test_plot_more_options_image_size_section_matches_settings_layout() -> None:
     asyncio.run(_run())
 
 
+def test_plot_more_options_scrolls_height_input_into_view_on_tight_viewport() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(84, 20)) as pilot:
+            await pilot.pause()
+            main_scroll = app.screen.query_one("#main-scroll", VerticalScroll)
+            button = app.screen.query_one("#plot-more-options", Button)
+            main_scroll.scroll_to_widget(button, animate=False, immediate=True)
+            await pilot.pause()
+            await pilot.click("#plot-more-options")
+            await pilot.pause()
+
+            scroll = app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+            height_input = app.screen.query_one("#advanced-output-height", Input)
+
+            scroll.scroll_to_widget(height_input, animate=False, immediate=True)
+            await pilot.pause()
+
+            assert height_input.region.height > 0
+            assert scroll.scroll_offset.y > 0
+            for button_id in (
+                "#advanced-save",
+                "#advanced-health-check",
+                "#advanced-cancel",
+            ):
+                widget = app.screen.query_one(button_id, Button)
+                assert widget.region.y + widget.region.height <= 20
+
+    asyncio.run(_run())
+
+
 def test_main_file_list_uses_modal_removal_flow() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()

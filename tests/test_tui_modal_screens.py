@@ -312,8 +312,17 @@ def test_advanced_options_screen_keeps_actions_visible_on_tight_viewport() -> No
         async with app.run_test(size=(84, 20)) as pilot:
             await pilot.pause()
             viewport_height = app.screen.size.height
+            scroll = app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+            height_input = app.screen.query_one("#advanced-output-height", Input)
+
+            scroll.scroll_to_widget(height_input, animate=False, immediate=True)
+            await pilot.pause()
 
             assert app.screen.query_one("#advanced-options-scroll", VerticalScroll)
+            assert height_input.region.y + height_input.region.height <= (
+                scroll.region.y + scroll.region.height
+            )
+            assert scroll.scroll_offset.y > 0
 
             for button_id in (
                 "#advanced-save",
