@@ -59,6 +59,16 @@ def default_plot_output_path(
     return resolved_output_dir / filename
 
 
+def default_separate_plot_output_path(
+    *,
+    source_path: str | Path,
+    output_dir: str | Path | None = None,
+) -> Path:
+    resolved_output_dir = _resolve_output_dir(output_dir)
+    resolved_output_dir.mkdir(parents=True, exist_ok=True)
+    return resolved_output_dir / f"{Path(source_path).stem}.jpg"
+
+
 def default_table_output_path(
     *,
     source_paths: Sequence[str | Path],

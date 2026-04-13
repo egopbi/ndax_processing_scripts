@@ -9,6 +9,7 @@ if str(ROOT_DIR) not in sys.path:
 
 from table_data_extraction.output_paths import (
     default_plot_output_path,
+    default_separate_plot_output_path,
     sample_name_from_path,
 )
 from table_data_extraction.plotting import (
@@ -64,6 +65,14 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         help="Optional upper bound for Y axis. If --y-column Voltage, units are mV.",
     )
+    parser.add_argument(
+        "--separate",
+        action="store_true",
+        help=(
+            "Generate one JPG per input file using source file stems "
+            "as output names."
+        ),
+    )
     parser.add_argument("--output", help="Optional JPG output path.")
     return parser
 
@@ -86,8 +95,40 @@ def _resolve_labels(
     return [str(label) for label in labels]
 
 
-def run(argv: Sequence[str] | None = None) -> Path:
+def _output_collision_key(path: Path) -> str:
+    return str(path.absolute()).casefold()
+
+
+def _resolve_separate_output_paths(
+    input_paths: Sequence[Path],
+) -> list[Path]:
+    outputs = [
+        default_separate_plot_output_path(source_path=file_path)
+        for file_path in input_paths
+    ]
+    collisions: dict[str, list[Path]] = {}
+    for output_path in outputs:
+        collisions.setdefault(_output_collision_key(output_path), []).append(
+            output_path
+        )
+
+    duplicated = [paths for paths in collisions.values() if len(paths) > 1]
+    if duplicated:
+        collision_details = ", ".join(str(paths[0]) for paths in duplicated)
+        raise ValueError(
+            "Output path collision detected in separate plot mode. "
+            "Input files must resolve to unique output JPG paths. "
+            f"Collisions: {collision_details}"
+        )
+    return outputs
+
+
+def run(argv: Sequence[str] | None = None) -> Path | list[Path]:
     args = _build_parser().parse_args(argv)
+    if args.separate and args.output is not None:
+        raise ValueError(
+            "--separate cannot be used together with --output."
+        )
 
     labels = _resolve_labels(args.files, args.labels)
     input_paths = [Path(file_path) for file_path in args.files]
@@ -163,6 +204,24 @@ def run(argv: Sequence[str] | None = None) -> Path:
     assert x_label is not None
     assert y_label is not None
 
+    x_limits = _build_limits(args.x_min, args.x_max)
+    y_limits = _build_limits(args.y_min, args.y_max)
+    if args.separate:
+        output_paths = _resolve_separate_output_paths(input_paths)
+        written_paths: list[Path] = []
+        for line, output_path in zip(lines, output_paths, strict=True):
+            written_paths.append(
+                save_multi_series_plot(
+                    [line],
+                    x_label=x_label,
+                    y_label=y_label,
+                    output_path=output_path,
+                    x_limits=x_limits,
+                    y_limits=y_limits,
+                )
+            )
+        return written_paths
+
     if args.output is None:
         output_path = default_plot_output_path(
             source_paths=input_paths,
@@ -177,19 +236,23 @@ def run(argv: Sequence[str] | None = None) -> Path:
         x_label=x_label,
         y_label=y_label,
         output_path=output_path,
-        x_limits=_build_limits(args.x_min, args.x_max),
-        y_limits=_build_limits(args.y_min, args.y_max),
+        x_limits=x_limits,
+        y_limits=y_limits,
     )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     try:
-        output_path = run(argv)
+        output = run(argv)
     except Exception as error:
         print(f"Plot generation failed: {error}", file=sys.stderr)
         return 1
 
-    print(f"Saved plot to {output_path}")
+    if isinstance(output, list):
+        for output_path in output:
+            print(f"Saved plot to {output_path}")
+    else:
+        print(f"Saved plot to {output}")
     return 0
 
 

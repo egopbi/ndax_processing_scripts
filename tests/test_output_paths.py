@@ -9,6 +9,7 @@ from table_data_extraction.config import OUTPUT_DIR
 from table_data_extraction.output_paths import (
     default_convert_output_path,
     default_plot_output_path,
+    default_separate_plot_output_path,
     default_table_output_path,
     sanitize_name,
 )
@@ -115,6 +116,29 @@ def test_default_plot_output_path_supports_overridden_output_dir(
 
     assert output_path.parent == override_dir
     assert output_path.name == "voltage-time-2026-03-28_12-34-56_example1.jpg"
+
+
+def test_default_separate_plot_output_path_uses_source_stem() -> None:
+    output_path = default_separate_plot_output_path(
+        source_path="examples/example4_4.ndax"
+    )
+
+    assert output_path.parent == OUTPUT_DIR
+    assert output_path.name == "example4_4.jpg"
+
+
+def test_default_separate_plot_output_path_supports_overridden_output_dir(
+    tmp_path: Path,
+) -> None:
+    override_dir = tmp_path / "session-output"
+
+    output_path = default_separate_plot_output_path(
+        source_path="examples/example4_4.ndax",
+        output_dir=override_dir,
+    )
+
+    assert output_path.parent == override_dir
+    assert output_path.name == "example4_4.jpg"
 
 
 def test_default_table_output_path_joins_multiple_instance_prefixes() -> None:

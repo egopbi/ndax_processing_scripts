@@ -242,6 +242,192 @@ def test_cli_defaults_labels_and_output_path(
     assert "Saved plot to" in captured_stdout
 
 
+def test_cli_separate_mode_writes_one_plot_per_input_file(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {}
+
+    def fake_load_ndax_dataframe(_path: Path) -> pd.DataFrame:
+        return _sample_dataframe()
+
+    def fail_if_called(**_kwargs):
+        raise AssertionError(
+            "default_plot_output_path should not be called in --separate mode"
+        )
+
+    def fake_default_separate_plot_output_path(*, source_path: Path) -> Path:
+        captured.setdefault("separate_source_paths", []).append(source_path)
+        return tmp_path / f"{source_path.stem}.jpg"
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+    ) -> Path:
+        captured.setdefault("save_calls", []).append((list(series), output_path))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module, "load_ndax_dataframe", fake_load_ndax_dataframe
+    )
+    monkeypatch.setattr(module, "default_plot_output_path", fail_if_called)
+    monkeypatch.setattr(
+        module,
+        "default_separate_plot_output_path",
+        fake_default_separate_plot_output_path,
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+
+    first_file = tmp_path / "first_sample.ndax"
+    second_file = tmp_path / "second_sample.ndax"
+    exit_code = module.main([
+        "--files",
+        str(first_file),
+        str(second_file),
+        "--y-column",
+        "voltage",
+        "--separate",
+    ])
+
+    assert exit_code == 0
+    assert captured["separate_source_paths"] == [first_file, second_file]
+    save_calls = captured["save_calls"]
+    assert save_calls is not None
+    assert len(save_calls) == 2
+    assert [str(path) for _, path in save_calls] == [
+        str(tmp_path / "first_sample.jpg"),
+        str(tmp_path / "second_sample.jpg"),
+    ]
+    assert [[line.label for line in series] for series, _ in save_calls] == [
+        ["first"],
+        ["second"],
+    ]
+    stdout = capsys.readouterr().out
+    assert "first_sample.jpg" in stdout
+    assert "second_sample.jpg" in stdout
+
+
+def test_cli_rejects_output_override_in_separate_mode(capsys) -> None:
+    module = _load_plot_ndax_module()
+    exit_code = module.main([
+        "--files",
+        "sample.ndax",
+        "--y-column",
+        "voltage",
+        "--separate",
+        "--output",
+        "custom.jpg",
+    ])
+
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "--separate cannot be used together with --output" in captured.err
+
+
+def test_cli_separate_mode_preserves_shared_trim_for_all_outputs(
+    monkeypatch, tmp_path: Path
+) -> None:
+    module = _load_plot_ndax_module()
+    captured: dict[str, object] = {
+        "startup_calls": 0,
+        "initial_calls": 0,
+        "first_x_values": [],
+        "output_paths": [],
+    }
+    real_resolve_shared_startup_tail_trim_points = (
+        module.resolve_shared_startup_tail_trim_points
+    )
+    real_resolve_shared_initial_cycle_trim_points = (
+        module.resolve_shared_initial_cycle_trim_points
+    )
+
+    def wrapped_resolve_shared_startup_tail_trim_points(
+        dataframes, *, y_col: str
+    ) -> int:
+        captured["startup_calls"] += 1
+        return real_resolve_shared_startup_tail_trim_points(
+            dataframes, y_col=y_col
+        )
+
+    def wrapped_resolve_shared_initial_cycle_trim_points(
+        dataframes, *, startup_tail_trim_points: int
+    ) -> int:
+        captured["initial_calls"] += 1
+        return real_resolve_shared_initial_cycle_trim_points(
+            dataframes,
+            startup_tail_trim_points=startup_tail_trim_points,
+        )
+
+    def fake_default_separate_plot_output_path(*, source_path: Path) -> Path:
+        return tmp_path / f"{source_path.stem}.jpg"
+
+    def fake_save_multi_series_plot(
+        series: list[PlotSeries],
+        *,
+        x_label: str,
+        y_label: str,
+        output_path: Path,
+        x_limits,
+        y_limits,
+    ) -> Path:
+        assert len(series) == 1
+        captured["first_x_values"].append(
+            round(float(series[0].frame["__plot_x__"].iloc[0]), 6)
+        )
+        captured["output_paths"].append(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"jpg")
+        return output_path
+
+    monkeypatch.setattr(
+        module,
+        "resolve_shared_startup_tail_trim_points",
+        wrapped_resolve_shared_startup_tail_trim_points,
+    )
+    monkeypatch.setattr(
+        module,
+        "resolve_shared_initial_cycle_trim_points",
+        wrapped_resolve_shared_initial_cycle_trim_points,
+    )
+    monkeypatch.setattr(
+        module,
+        "default_separate_plot_output_path",
+        fake_default_separate_plot_output_path,
+    )
+    monkeypatch.setattr(
+        module, "save_multi_series_plot", fake_save_multi_series_plot
+    )
+
+    exit_code = module.main([
+        "--files",
+        str(EXAMPLES_DIR / "example5_5.ndax"),
+        str(EXAMPLES_DIR / "example6_6.ndax"),
+        str(EXAMPLES_DIR / "example7_7.ndax"),
+        "--y-column",
+        "voltage",
+        "--separate",
+    ])
+
+    assert exit_code == 0
+    assert captured["startup_calls"] == 1
+    assert captured["initial_calls"] == 1
+    assert captured["first_x_values"] == [0.0, 0.0, 0.0]
+    assert [path.name for path in captured["output_paths"]] == [
+        "example5_5.jpg",
+        "example6_6.jpg",
+        "example7_7.jpg",
+    ]
+
+
 def test_cli_trims_initial_partial_cycle_for_shared_multi_file_plot(
     monkeypatch, tmp_path: Path
 ) -> None:
