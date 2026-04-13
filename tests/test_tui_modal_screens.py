@@ -11,6 +11,9 @@ from table_data_extraction.tui.screens.advanced_options_screen import (
     AdvancedOptionsScreen,
 )
 from table_data_extraction.tui.screens.manage_files_screen import ManageFilesScreen
+from table_data_extraction.tui.screens.select_columns_screen import (
+    SelectColumnsScreen,
+)
 
 
 class _ScreenHarnessApp(App[None]):
@@ -142,5 +145,51 @@ def test_advanced_options_screen_can_request_health_check_for_table() -> None:
             assert app.screen_result.state.mode == "table"
             assert app.screen_result.state.labels == "label-1,label-2"
             assert app.screen_result.state.output_override == "table.csv"
+
+    asyncio.run(_run())
+
+
+def test_select_columns_screen_locks_time_and_applies_selection() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                ["Time", "Voltage", "Current(mA)"],
+                selected_columns=["Time", "Voltage"],
+                locked_columns=["Time"],
+            )
+        )
+        async with app.run_test(size=(90, 30)) as pilot:
+            selection_list = app.screen.query_one("#select-columns-list", SelectionList)
+            apply_button = app.screen.query_one("#select-columns-apply", Button)
+
+            assert selection_list.selected == ["Time", "Voltage"]
+            assert not apply_button.disabled
+
+            await pilot.click("#select-columns-clear-selected")
+            await pilot.pause()
+            assert selection_list.selected == ["Time"]
+            assert not apply_button.disabled
+
+            await pilot.click("#select-columns-apply")
+            await pilot.pause()
+            assert app.screen_result == ("Time",)
+
+    asyncio.run(_run())
+
+
+def test_select_columns_screen_handles_empty_state() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                [],
+                selected_columns=[],
+            )
+        )
+        async with app.run_test(size=(90, 30)) as pilot:
+            assert app.screen.query_one("#select-columns-empty", Static).content == "No columns available."
+            assert app.screen.query_one("#select-columns-apply", Button).disabled
+            await pilot.click("#select-columns-cancel")
+            await pilot.pause()
+            assert app.screen_result is None
 
     asyncio.run(_run())

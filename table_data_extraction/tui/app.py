@@ -307,11 +307,11 @@ class NdaxTuiApp(App[None]):
         margin-top: 1;
     }
 
-    #plot-column-helper, #table-column-helper {
+    #plot-column-helper, #table-column-helper, #convert-column-helper {
         height: auto;
     }
 
-    #plot-column-controls, #table-column-controls {
+    #plot-column-controls, #table-column-controls, #convert-column-controls {
         display: none;
         height: auto;
         min-height: 0;

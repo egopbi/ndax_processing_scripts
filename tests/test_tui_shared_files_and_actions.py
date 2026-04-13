@@ -29,6 +29,14 @@ def test_shared_files_persist_across_mode_switches() -> None:
                 Path("plot-b.ndax"),
             )
 
+            mode_select.value = "convert"
+            await pilot.pause()
+            assert app.screen.current_mode == "convert"
+            assert shared_files.paths == (
+                Path("plot-a.ndax"),
+                Path("plot-b.ndax"),
+            )
+
             mode_select.value = "plot"
             await pilot.pause()
             assert app.screen.current_mode == "plot"

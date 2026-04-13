@@ -36,8 +36,10 @@ def test_app_mounts_main_screen_widgets() -> None:
             assert app.screen.query_one("#run-status", Static).content == "Ready"
             assert app.screen.query_one("#plot-column-helper", Static)
             assert app.screen.query_one("#table-column-helper", Static)
+            assert app.screen.query_one("#convert-column-helper", Static)
             assert not app.screen.query_one("#plot-column-controls").display
             assert not app.screen.query_one("#table-column-controls").display
+            assert not app.screen.query_one("#convert-column-controls").display
             assert app.screen.query_one("#mode-select", Select).value == "plot"
             assert app.screen.query_one("#plot-x-min", Input)
             assert app.screen.query_one("#plot-x-max", Input)
@@ -138,12 +140,19 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             plot_helper = app.screen.query_one("#plot-column-helper", Static)
             table_controls = app.screen.query_one("#table-column-controls")
             table_helper = app.screen.query_one("#table-column-helper", Static)
+            convert_controls = app.screen.query_one("#convert-column-controls")
+            convert_helper = app.screen.query_one("#convert-column-helper", Static)
+            convert_button = app.screen.query_one("#convert-select-columns", Button)
+            convert_selected = app.screen.query_one("#convert-selected-columns", Static)
             assert plot_y.disabled
             assert plot_x.disabled
             assert not plot_controls.display
             assert plot_helper.display
             assert not table_controls.display
             assert table_helper.display
+            assert not convert_controls.display
+            assert convert_helper.display
+            assert convert_button.disabled
 
             shared_files.set_paths([Path("plot-1.ndax")])
             await pilot.pause()
@@ -158,6 +167,13 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             await pilot.pause()
             assert plot_y.value == "Voltage"
             assert plot_x.value == "Time"
+            assert convert_controls.display
+            assert not convert_helper.display
+            assert not convert_button.disabled
+            assert (
+                convert_selected.content
+                == "Selected columns: Voltage, Time"
+            )
 
             mode_select.value = "table"
             await pilot.pause()
@@ -170,6 +186,8 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             assert not table_helper.display
             assert table_y.value == "Voltage"
             assert table_x.value == "Time"
+            assert convert_controls.display
+            assert not convert_button.disabled
 
             shared_files.clear_paths()
             await pilot.pause()
@@ -179,11 +197,13 @@ def test_column_selects_update_and_clear_with_loaded_files(monkeypatch) -> None:
             assert table_helper.display
             assert table_y.value == Select.NULL
             assert table_x.value == Select.NULL
+            assert not convert_controls.display
+            assert convert_button.disabled
 
     asyncio.run(_run())
 
 
-@pytest.mark.parametrize("mode", ["plot", "table"])
+@pytest.mark.parametrize("mode", ["plot", "table", "convert"])
 def test_column_load_failures_are_logged_and_disable_selects(
     monkeypatch,
     mode: str,
@@ -208,8 +228,11 @@ def test_column_load_failures_are_logged_and_disable_selects(
             shared_files.add_paths([Path("broken.ndax")])
             await pilot.pause()
 
-            assert plot_y.disabled
-            assert plot_x.disabled
+            if mode in {"plot", "table"}:
+                assert plot_y.disabled
+                assert plot_x.disabled
+            else:
+                assert app.screen.query_one("#convert-select-columns", Button).disabled
             assert status.content == f"Failed to load columns for {mode}: boom"
 
     asyncio.run(_run())
@@ -237,6 +260,10 @@ def test_column_load_failure_status_tracks_visible_mode_after_switch(
             mode_select.value = "table"
             await pilot.pause()
             assert status.content == "Failed to load columns for table: boom"
+
+            mode_select.value = "convert"
+            await pilot.pause()
+            assert status.content == "Failed to load columns for convert: boom"
 
             mode_select.value = "plot"
             await pilot.pause()
@@ -508,6 +535,39 @@ def test_table_override_forces_csv_suffix_from_main_input(monkeypatch) -> None:
     asyncio.run(_run())
 
 
+def test_convert_mode_builds_command_with_selected_columns(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "table_data_extraction.tui.screens.main_screen.list_columns",
+        lambda path: ["Voltage", "Time", "Current(mA)"],
+    )
+
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test() as pilot:
+            shared_files = app.screen.query_one("#shared-files", FileList)
+            mode_select = app.screen.query_one("#mode-select", Select)
+
+            shared_files.set_paths([Path("convert.ndax")])
+            mode_select.value = "convert"
+            await pilot.pause()
+
+            app.screen._convert_columns_closed(("Time", "Current(mA)"))
+            command = app.screen._build_active_command()
+
+            assert command.mode == "convert"
+            assert command.argv[2] == str(Path("scripts/convert_ndax.py"))
+            assert "--files" in command.argv
+            assert "--columns" in command.argv
+            columns_index = command.argv.index("--columns")
+            assert command.argv[columns_index + 1:columns_index + 3] == (
+                "Time",
+                "Current(mA)",
+            )
+            assert command.argv[-2:] == ("--output-dir", str(app.current_output_dir))
+
+    asyncio.run(_run())
+
+
 def test_output_override_inputs_live_in_main_parameters_forms() -> None:
     async def _run() -> None:
         app = NdaxTuiApp()
@@ -529,6 +589,21 @@ def test_output_override_inputs_live_in_main_parameters_forms() -> None:
 
             assert table_override.region.y > table_anchor.region.y
             assert table_override.region.y < table_more.region.y
+
+    asyncio.run(_run())
+
+
+def test_convert_form_uses_columns_modal_without_output_override() -> None:
+    async def _run() -> None:
+        app = NdaxTuiApp()
+        async with app.run_test(size=(100, 36)) as pilot:
+            app.screen.query_one("#mode-select", Select).value = "convert"
+            await pilot.pause()
+
+            assert app.screen.query_one("#convert-select-columns", Button)
+            assert app.screen.query_one("#convert-selected-columns", Static)
+            with pytest.raises(NoMatches):
+                app.screen.query_one("#convert-output-override", Input)
 
     asyncio.run(_run())
 
