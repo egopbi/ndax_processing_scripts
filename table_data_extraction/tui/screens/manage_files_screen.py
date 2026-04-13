@@ -51,11 +51,18 @@ class ManageFilesScreen(ModalScreen[tuple[Path, ...] | None]):
         dock: bottom;
         height: auto;
         margin-top: 1;
+        background: #20242b;
     }
 
     .manage-files-action-row {
         width: 1fr;
         height: auto;
+        background: #20242b;
+    }
+
+    .manage-files-action-row Button {
+        width: 1fr;
+        margin: 0;
     }
     """
 
@@ -85,7 +92,10 @@ class ManageFilesScreen(ModalScreen[tuple[Path, ...] | None]):
                 yield Static("No files available.", id="manage-files-empty")
             with Vertical(id="manage-files-actions"):
                 with Horizontal(classes="manage-files-action-row"):
-                    yield Button("Select All", id="manage-files-select-all")
+                    yield Button(
+                        "Select All",
+                        id="manage-files-select-all",
+                    )
                     yield Button(
                         "Clear Selection",
                         id="manage-files-clear-selection",

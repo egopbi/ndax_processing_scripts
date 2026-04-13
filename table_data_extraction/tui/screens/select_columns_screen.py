@@ -48,11 +48,18 @@ class SelectColumnsScreen(ModalScreen[tuple[str, ...] | None]):
         dock: bottom;
         height: auto;
         margin-top: 1;
+        background: #20242b;
     }
 
     .select-columns-action-row {
         width: 1fr;
         height: auto;
+        background: #20242b;
+    }
+
+    .select-columns-action-row Button {
+        width: 1fr;
+        margin: 0;
     }
     """
 

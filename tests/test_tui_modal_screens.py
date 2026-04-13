@@ -17,6 +17,7 @@ from table_data_extraction.tui.screens.select_columns_screen import (
 
 PROJECT_BLUE_RGB = (109, 183, 255)
 PROJECT_BLUE_HOVER_RGB = (140, 200, 255)
+MODAL_SURFACE_RGB = (32, 36, 43)
 
 
 class _ScreenHarnessApp(App[None]):
@@ -117,6 +118,41 @@ def test_manage_files_screen_keeps_action_buttons_visible_on_tight_viewport() ->
                 button = app.screen.query_one(button_id, Button)
                 assert button.region.height > 0
                 assert button.region.y + button.region.height <= viewport_height
+
+    asyncio.run(_run())
+
+
+def test_manage_files_screen_action_buttons_have_uniform_width() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(ManageFilesScreen([Path(f"sample_{index:02d}.ndax") for index in range(8)]))
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            widths = [
+                app.screen.query_one(button_id, Button).region.width
+                for button_id in (
+                    "#manage-files-select-all",
+                    "#manage-files-clear-selection",
+                    "#manage-files-remove",
+                    "#manage-files-cancel",
+                )
+            ]
+            assert len(set(widths)) == 1
+
+    asyncio.run(_run())
+
+
+def test_manage_files_screen_action_area_uses_modal_surface_background() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(ManageFilesScreen([Path(f"sample_{index:02d}.ndax") for index in range(8)]))
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            actions = app.screen.query_one("#manage-files-actions")
+            rows = list(app.screen.query(".manage-files-action-row"))
+            right_button = app.screen.query_one("#manage-files-cancel", Button)
+
+            assert actions.styles.background.rgb == MODAL_SURFACE_RGB
+            assert all(row.styles.background.rgb == MODAL_SURFACE_RGB for row in rows)
+            assert right_button.styles.background.rgb != MODAL_SURFACE_RGB
 
     asyncio.run(_run())
 
@@ -279,6 +315,51 @@ def test_select_columns_screen_keeps_action_buttons_visible_on_tight_viewport() 
                 button = app.screen.query_one(button_id, Button)
                 assert button.region.height > 0
                 assert button.region.y + button.region.height <= viewport_height
+
+    asyncio.run(_run())
+
+
+def test_select_columns_screen_action_buttons_have_uniform_width() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                [f"Column {index:02d}" for index in range(12)],
+                selected_columns=["Column 00"],
+            )
+        )
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            widths = [
+                app.screen.query_one(button_id, Button).region.width
+                for button_id in (
+                    "#select-columns-select-all",
+                    "#select-columns-clear-selected",
+                    "#select-columns-apply",
+                    "#select-columns-cancel",
+                )
+            ]
+            assert len(set(widths)) == 1
+
+    asyncio.run(_run())
+
+
+def test_select_columns_screen_action_area_uses_modal_surface_background() -> None:
+    async def _run() -> None:
+        app = _ScreenHarnessApp(
+            SelectColumnsScreen(
+                [f"Column {index:02d}" for index in range(12)],
+                selected_columns=["Column 00"],
+            )
+        )
+        async with app.run_test(size=(90, 24)) as pilot:
+            await pilot.pause()
+            actions = app.screen.query_one("#select-columns-actions")
+            rows = list(app.screen.query(".select-columns-action-row"))
+            right_button = app.screen.query_one("#select-columns-cancel", Button)
+
+            assert actions.styles.background.rgb == MODAL_SURFACE_RGB
+            assert all(row.styles.background.rgb == MODAL_SURFACE_RGB for row in rows)
+            assert right_button.styles.background.rgb != MODAL_SURFACE_RGB
 
     asyncio.run(_run())
 
